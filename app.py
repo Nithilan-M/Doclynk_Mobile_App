@@ -4,13 +4,12 @@ from db_config import get_db_connection
 from dotenv import load_dotenv
 import os
 
-app.config["DEBUG"] = True
 
 # Load environment variables from .env
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY")   # secret key is now from .env
+app.secret_key = os.getenv("SECRET_KEY", "dev_secret") # secret key is now from .env
 
 
 # Generate time slots from 9:00 AM to 5:00 PM with 30-minute intervals
@@ -66,27 +65,32 @@ def login():
 
         conn = get_db_connection()
         cursor = conn.cursor()
+
         cursor.execute(
-            "SELECT * FROM users WHERE email = %s AND password = %s",
+            "SELECT id, role, name FROM users WHERE email = %s AND password = %s",
             (email, password)
         )
+
         user = cursor.fetchone()
-        colnames = [desc[0] for desc in cursor.description]  # get column names
+
         cursor.close()
         conn.close()
 
-        if user:
-            user_dict = dict(zip(colnames, user))
-            session['user_id'] = user_dict['id']
-            session['role'] = user_dict['role']
-            session['name'] = user_dict['name']
+        # ✅ SAFETY CHECK (VERY IMPORTANT)
+        if user is None:
+            flash("Invalid email or password")
+            return redirect('/login')
 
-            if user_dict['role'] == 'doctor':
-                return redirect(url_for('doctor_dashboard'))
-            else:
-                return redirect(url_for('patient_dashboard'))
+        # ✅ SAFE UNPACK
+        user_id, role, name = user
+        session['user_id'] = user_id
+        session['role'] = role
+        session['name'] = name
+
+        if role == 'doctor':
+            return redirect('/doctor/dashboard')
         else:
-            return "Invalid credentials"
+            return redirect('/patient/dashboard')
 
     return render_template('login.html')
 
