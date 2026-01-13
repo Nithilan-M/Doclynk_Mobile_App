@@ -4,8 +4,6 @@ from db_config import get_db_connection
 from dotenv import load_dotenv
 import os
 
-app.config["DEBUG"] = True
-
 # Load environment variables from .env
 load_dotenv()
 
