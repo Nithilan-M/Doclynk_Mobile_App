@@ -4,7 +4,10 @@ from db_config import get_db_connection
 from dotenv import load_dotenv
 import os
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 1177e590b5b1f1c07fe157316dcf813607d455cb
 # Load environment variables from .env
 load_dotenv()
 
