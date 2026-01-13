@@ -1,0 +1,151 @@
+{% extends 'index.html' %}
+{% block title %}Patient Dashboard - MediCare Professional Healthcare{% endblock %}
+
+{% block content %}
+<!-- Dashboard Header -->
+<div class="text-center mb-16 animate-fade-in">
+    <div class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl shadow-xl mb-6 animate-float">
+        <i class="fas fa-user-injured text-white text-3xl"></i>
+    </div>
+    <h1 class="text-4xl md:text-5xl font-extrabold text-white tracking-tight drop-shadow-lg">
+        Welcome, {{ name }}
+    </h1>
+    <p class="mt-3 text-lg text-white/80 max-w-2xl mx-auto leading-relaxed">
+        Your personalized health dashboard to manage appointments with ease ✨
+    </p>
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="mb-8 p-4 rounded-2xl border-l-4 shadow-lg backdrop-blur-xl
+                {% if category == 'success' %}bg-green-100/20 border-green-400 text-green-200
+                {% elif category == 'error' %}bg-red-100/20 border-red-400 text-red-200
+                {% else %}bg-blue-100/20 border-blue-400 text-blue-200{% endif %}">
+                <div class="flex items-center">
+                    <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' %}exclamation-circle{% else %}info-circle{% endif %} mr-3"></i>
+                    <span class="font-medium">{{ message }}</span>
+                </div>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<!-- Quick Actions -->
+<div class="flex justify-center mb-14">
+    <a href="{{ url_for('book_appointment') }}" 
+       class="group inline-flex items-center px-10 py-4 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-2xl hover:from-primary-600 hover:to-primary-700 transition-all duration-300 hover:scale-105 shadow-xl">
+        <i class="fas fa-calendar-plus mr-3 text-lg group-hover:rotate-12 transition-transform"></i>
+        Book New Appointment
+    </a>
+</div>
+
+<!-- Statistics Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+    <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 text-center card-hover border border-white/20 shadow-lg hover:shadow-primary-500/30 transition-all duration-300">
+        <div class="w-14 h-14 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl flex items-center justify-center mx-auto mb-5">
+            <i class="fas fa-calendar-check text-white text-xl"></i>
+        </div>
+        <div class="text-4xl font-extrabold text-white mb-1">{{ appointments|length }}</div>
+        <p class="text-white/70 text-sm tracking-wide">Total Appointments</p>
+    </div>
+    
+    <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 text-center card-hover border border-white/20 shadow-lg hover:shadow-yellow-500/30 transition-all duration-300">
+        <div class="w-14 h-14 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center mx-auto mb-5">
+            <i class="fas fa-clock text-white text-xl"></i>
+        </div>
+        <div class="text-4xl font-extrabold text-white mb-1">{{ appointments|selectattr('status', 'equalto', 'Pending')|list|length }}</div>
+        <p class="text-white/70 text-sm tracking-wide">Pending</p>
+    </div>
+    
+    <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 text-center card-hover border border-white/20 shadow-lg hover:shadow-green-500/30 transition-all duration-300">
+        <div class="w-14 h-14 bg-gradient-to-r from-green-500 to-green-600 rounded-xl flex items-center justify-center mx-auto mb-5">
+            <i class="fas fa-check-circle text-white text-xl"></i>
+        </div>
+        <div class="text-4xl font-extrabold text-white mb-1">{{ appointments|selectattr('status', 'equalto', 'Approved')|list|length }}</div>
+        <p class="text-white/70 text-sm tracking-wide">Approved</p>
+    </div>
+    
+    <div class="bg-white/10 backdrop-blur-lg rounded-2xl p-6 text-center card-hover border border-white/20 shadow-lg hover:shadow-red-500/30 transition-all duration-300">
+        <div class="w-14 h-14 bg-gradient-to-r from-red-500 to-red-600 rounded-xl flex items-center justify-center mx-auto mb-5">
+            <i class="fas fa-times-circle text-white text-xl"></i>
+        </div>
+        <div class="text-4xl font-extrabold text-white mb-1">{{ appointments|selectattr('status', 'equalto', 'Rejected')|list|length }}</div>
+        <p class="text-white/70 text-sm tracking-wide">Rejected</p>
+    </div>
+</div>
+
+<!-- Appointments Section -->
+<div class="bg-white/10 backdrop-blur-lg rounded-3xl p-10 border border-white/20 shadow-2xl animate-fade-up">
+    <div class="flex items-center justify-between mb-8">
+        <h2 class="text-3xl font-bold text-white flex items-center">
+            <i class="fas fa-calendar-alt mr-4 text-primary-300"></i>
+            Your Appointments
+        </h2>
+    </div>
+    
+    {% if appointments %}
+        <div class="overflow-x-auto">
+            <table class="w-full border-separate border-spacing-y-3">
+                <thead>
+                    <tr class="bg-white/5 rounded-xl">
+                        <th class="text-left py-4 px-6 text-white/70 font-semibold">Doctor</th>
+                        <th class="text-left py-4 px-6 text-white/70 font-semibold">Date</th>
+                        <th class="text-left py-4 px-6 text-white/70 font-semibold">Time</th>
+                        <th class="text-left py-4 px-6 text-white/70 font-semibold">Reason</th>
+                        <th class="text-left py-4 px-6 text-white/70 font-semibold">Status</th>
+                        <th class="text-left py-4 px-6 text-white/70 font-semibold">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in appointments %}
+                    <tr class="bg-white/10 hover:bg-white/20 transition-all duration-200 rounded-xl shadow-sm">
+                        <td class="py-4 px-6 text-white">{{ app.doctor_name }}</td>
+                        <td class="py-4 px-6 text-white">{{ app.date }}</td>
+                        <td class="py-4 px-6 text-primary-300 font-semibold">{{ app.time_slot or 'Not specified' }}</td>
+                        <td class="py-4 px-6 text-white">{{ app.reason }}</td>
+                        <td class="py-4 px-6">
+                            <span class="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-semibold
+                                {% if app.status == 'Pending' %}bg-yellow-100/20 text-yellow-200
+                                {% elif app.status == 'Approved' %}bg-green-100/20 text-green-200
+                                {% else %}bg-red-100/20 text-red-200{% endif %}">
+                                <i class="fas fa-{% if app.status == 'Pending' %}clock{% elif app.status == 'Approved' %}check{% else %}times{% endif %} mr-2"></i>
+                                {{ app.status }}
+                            </span>
+                        </td>
+                        <td class="py-4 px-6">
+                            <div class="flex space-x-3">
+                                {% if app.status == 'Pending' %}
+                                    <a href="{{ url_for('delete_appointment', appointment_id=app.id) }}" 
+                                       class="inline-flex items-center px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded-lg transition-all duration-200 shadow-md"
+                                       onclick="return confirm('Are you sure you want to cancel this appointment?')">
+                                        <i class="fas fa-times mr-1"></i> Cancel
+                                    </a>
+                                {% else %}
+                                    <span class="text-white/50 text-xs italic">No actions</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="text-center py-16">
+            <div class="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-6 animate-float">
+                <i class="fas fa-calendar-times text-white/60 text-4xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-white mb-3">No Appointments Found</h3>
+            <p class="text-white/70 mb-6 max-w-md mx-auto">
+                You haven't booked any appointments yet. Start your healthcare journey today 🚀
+            </p>
+            <a href="{{ url_for('book_appointment') }}" 
+               class="inline-flex items-center px-8 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold rounded-xl hover:from-primary-600 hover:to-primary-700 transition-all duration-300 hover:scale-105 shadow-lg">
+                <i class="fas fa-calendar-plus mr-3"></i> Book Your First Appointment
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

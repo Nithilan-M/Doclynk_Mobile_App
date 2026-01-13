@@ -1,0 +1,246 @@
+/* =============================
+   Global Styles
+============================= */
+:root {
+    --primary: #2563eb;   /* Professional Blue */
+    --primary-dark: #1e40af;
+    --accent: #06b6d4;    /* Cyan Accent */
+    --success: #22c55e;
+    --danger: #ef4444;
+    --warning: #facc15;
+    --text-light: #f9fafb;
+    --text-muted: #cbd5e1;
+    --glass-bg: rgba(255, 255, 255, 0.06);
+    --glass-border: rgba(255, 255, 255, 0.15);
+}
+
+/* Aurora Gradient Background */
+body {
+    font-family: 'Poppins', sans-serif;
+    background: radial-gradient(circle at top left, #6EE7B7, transparent 40%),
+                radial-gradient(circle at top right, #93C5FD, transparent 40%),
+                radial-gradient(circle at bottom left, #FDE68A, transparent 40%),
+                radial-gradient(circle at bottom right, #FCA5A5, transparent 40%);
+    background-size: 400% 400%;
+    animation: aurora 25s ease infinite;
+    color: var(--text-light);
+    min-height: 100vh;
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+}
+
+@keyframes aurora {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* =============================
+   Typography
+============================= */
+h1, h2, h3, h4, h5 {
+    font-weight: 600;
+    color: var(--text-light);
+}
+p, label, span {
+    color: var(--text-muted);
+}
+
+/* =============================
+   Containers & Cards
+============================= */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* 🔥 FIXED: removed the rectangle look from .card */
+.card {
+    background: none;       /* no faded box */
+    border: none;           /* no border */
+    border-radius: 0;       /* optional: keep sharp edges */
+    padding: 2rem;
+    box-shadow: none;       /* no shadow behind */
+    backdrop-filter: none;  /* no blur */
+    transition: none;
+    width: 90%;   /* instead of fixed 400px */
+    max-width: 400px; /* still keeps it neat on desktop */
+}
+
+/* You can keep hover effect disabled */
+.card:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* =============================
+   Buttons
+============================= */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.8rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+}
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+    transform: scale(1.05);
+    box-shadow: 0 4px 20px rgba(37,99,235,0.4);
+}
+
+.btn-accent {
+    background: linear-gradient(135deg, var(--accent), #0891b2);
+    color: white;
+}
+.btn-accent:hover {
+    background: linear-gradient(135deg, #0891b2, var(--accent));
+    transform: scale(1.05);
+    box-shadow: 0 4px 20px rgba(6,182,212,0.4);
+}
+
+/* =============================
+   Form Inputs
+============================= */
+input, select, textarea {
+    width: 100%;
+    padding: 0.9rem 1.2rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--glass-border);
+    background: rgba(255,255,255,0.08);
+    color: white;
+    font-size: 1rem;
+    outline: none;
+    transition: border 0.2s, background 0.2s;
+    backdrop-filter: blur(12px) saturate(150%);
+}
+
+input::placeholder {
+    color: rgba(255,255,255,0.5);
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+    background: rgba(255,255,255,0.15);
+    box-shadow: 0 0 0 3px rgba(6,182,212,0.3);
+}
+
+/* =============================
+   Alerts
+============================= */
+.alert {
+    padding: 1rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 500;
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    backdrop-filter: blur(12px) saturate(160%);
+}
+.alert-success {
+    background: rgba(34,197,94,0.2);
+    border-left: 4px solid var(--success);
+    color: var(--success);
+}
+.alert-danger {
+    background: rgba(239,68,68,0.2);
+    border-left: 4px solid var(--danger);
+    color: var(--danger);
+}
+.alert-warning {
+    background: rgba(250,204,21,0.2);
+    border-left: 4px solid var(--warning);
+    color: var(--warning);
+}
+
+/* =============================
+   Tables
+============================= */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+    background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+    border: 1px solid var(--glass-border);
+    border-radius: 1rem;
+    overflow: hidden;
+    backdrop-filter: blur(14px) saturate(160%);
+}
+.table th, .table td {
+    padding: 1rem;
+    text-align: left;
+    color: var(--text-light);
+}
+.table th {
+    background: rgba(255,255,255,0.05);
+    font-weight: 600;
+}
+.table tr:hover {
+    background: rgba(255,255,255,0.08);
+}
+
+/* =============================
+   Links
+============================= */
+a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+a:hover {
+    color: #67e8f9;
+}
+
+/* =============================
+   Footer
+============================= */
+footer {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    backdrop-filter: blur(10px);
+}
+
+/* Tablets */
+@media (max-width: 768px) {
+    body {
+        font-size: 15px;
+    }
+    .card {
+        padding: 1.8rem;
+    }
+}
+
+/* Mobiles */
+@media (max-width: 480px) {
+    body {
+        font-size: 14px;
+        padding: 1rem;
+    }
+    .card {
+        padding: 1.2rem;
+        width: 100%;
+        border-radius: 1rem;
+    }
+    h1 {
+        font-size: 1.3rem;
+    }
+    input, .btn {
+        font-size: 0.9rem;
+        padding: 0.7rem 1rem;
+    }
+}
