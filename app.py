@@ -15,7 +15,7 @@ from security import (
 try:
     from email_service import (
         generate_otp, create_otp_record, verify_otp as verify_otp_code,
-        mark_email_verified, send_otp_email, send_welcome_email
+        mark_email_verified, send_otp_email, send_welcome_email, send_email_async
     )
     EMAIL_SERVICE_AVAILABLE = True
 except ImportError:
@@ -112,16 +112,23 @@ def register():
                 'role': role
             }
             
-            # Generate and send OTP
+            # Generate OTP and store in database
             otp = generate_otp()
             if create_otp_record(conn, email, otp):
-                success, message = send_otp_email(email, otp, name)
-                if success:
-                    conn.close()
-                    flash("A verification code has been sent to your email.", "success")
-                    return redirect(url_for('verify_email_page', email=email))
-                else:
-                    flash(f"Failed to send verification email: {message}", "error")
+                conn.close()
+                
+                # Send email in background thread (non-blocking)
+                # This prevents Gunicorn worker timeout on slow SMTP
+                def send_email_background():
+                    try:
+                        send_otp_email(email, otp, name)
+                    except Exception as e:
+                        print(f"Background email error: {e}")
+                
+                send_email_async(send_email_background)
+                
+                flash("A verification code has been sent to your email. Please check your inbox.", "success")
+                return redirect(url_for('verify_email_page', email=email))
             else:
                 flash("Failed to generate verification code. Please try again.", "error")
             

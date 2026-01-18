@@ -1,18 +1,35 @@
 """
 Email Service Module for MediCare Application
 Handles OTP generation, email sending via Gmail SMTP, and verification.
+Uses threading to prevent blocking the main request thread.
 """
 
 import os
 import random
 import string
 import smtplib
+import threading
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
+
+
+# =============================================================================
+# ASYNC EMAIL SENDING WRAPPER
+# =============================================================================
+
+def send_email_async(email_func, *args, **kwargs):
+    """
+    Wrapper to send emails in a background thread.
+    Prevents blocking the main request and avoids Gunicorn worker timeout.
+    """
+    thread = threading.Thread(target=email_func, args=args, kwargs=kwargs)
+    thread.daemon = True
+    thread.start()
+    return True
 
 
 # =============================================================================
