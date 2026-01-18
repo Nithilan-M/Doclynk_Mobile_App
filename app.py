@@ -11,6 +11,16 @@ from security import (
     check_account_lockout, record_failed_login, reset_failed_login
 )
 
+# Import email service for OTP
+try:
+    from email_service import (
+        generate_otp, create_otp_record, verify_otp as verify_otp_code,
+        mark_email_verified, send_otp_email, send_welcome_email
+    )
+    EMAIL_SERVICE_AVAILABLE = True
+except ImportError:
+    EMAIL_SERVICE_AVAILABLE = False
+
 
 # Load environment variables from .env
 load_dotenv()
@@ -79,9 +89,6 @@ def register():
             flash(error_msg, "error")
             return render_template('register.html')
 
-        # Hash password before storing
-        hashed_password = hash_password(password)
-
         conn = get_db_connection()
         cursor = conn.cursor()
         
@@ -93,18 +100,54 @@ def register():
             conn.close()
             return render_template('register.html')
         
+        cursor.close()
+        
+        # If email service is available, send OTP first
+        if EMAIL_SERVICE_AVAILABLE and os.getenv('MAIL_USERNAME'):
+            # Store registration data in session temporarily
+            session['pending_registration'] = {
+                'name': name,
+                'email': email,
+                'password': hash_password(password),
+                'role': role
+            }
+            
+            # Generate and send OTP
+            otp = generate_otp()
+            if create_otp_record(conn, email, otp):
+                success, message = send_otp_email(email, otp, name)
+                if success:
+                    conn.close()
+                    flash("A verification code has been sent to your email.", "success")
+                    return redirect(url_for('verify_email_page', email=email))
+                else:
+                    flash(f"Failed to send verification email: {message}", "error")
+            else:
+                flash("Failed to generate verification code. Please try again.", "error")
+            
+            conn.close()
+            return render_template('register.html')
+        
+        # If email service not available, register directly (legacy flow)
+        hashed_password = hash_password(password)
+        cursor = conn.cursor()
+        
         try:
-            # Try with auth_provider column (new schema)
             cursor.execute(
-                "INSERT INTO users (name, email, password, role, auth_provider) VALUES (%s, %s, %s, %s, %s)",
-                (name, email, hashed_password, role, 'email'),
+                "INSERT INTO users (name, email, password, role, auth_provider, email_verified) VALUES (%s, %s, %s, %s, %s, %s)",
+                (name, email, hashed_password, role, 'email', True),
             )
         except Exception:
-            # Fall back to old schema without auth_provider
-            cursor.execute(
-                "INSERT INTO users (name, email, password, role) VALUES (%s, %s, %s, %s)",
-                (name, email, hashed_password, role),
-            )
+            try:
+                cursor.execute(
+                    "INSERT INTO users (name, email, password, role, auth_provider) VALUES (%s, %s, %s, %s, %s)",
+                    (name, email, hashed_password, role, 'email'),
+                )
+            except Exception:
+                cursor.execute(
+                    "INSERT INTO users (name, email, password, role) VALUES (%s, %s, %s, %s)",
+                    (name, email, hashed_password, role),
+                )
         conn.commit()
         cursor.close()
         conn.close()
@@ -113,6 +156,117 @@ def register():
         return redirect(url_for('login'))
 
     return render_template('register.html')
+
+
+# OTP Verification Page
+@app.route('/verify-email')
+def verify_email_page():
+    email = request.args.get('email', '')
+    if not email:
+        return redirect(url_for('register'))
+    return render_template('verify_otp.html', email=email)
+
+
+# Verify OTP
+@app.route('/verify-otp', methods=['POST'])
+@limiter.limit("10 per minute")
+def verify_otp():
+    email = request.form.get('email', '').lower().strip()
+    otp = request.form.get('otp', '')
+    
+    if not email or not otp:
+        flash("Please enter the verification code.", "error")
+        return redirect(url_for('verify_email_page', email=email))
+    
+    conn = get_db_connection()
+    
+    # Verify OTP
+    is_valid, message = verify_otp_code(conn, email, otp)
+    
+    if not is_valid:
+        conn.close()
+        flash(message, "error")
+        return redirect(url_for('verify_email_page', email=email))
+    
+    # Get pending registration data
+    pending = session.get('pending_registration')
+    
+    if not pending or pending.get('email') != email:
+        conn.close()
+        flash("Registration session expired. Please register again.", "error")
+        return redirect(url_for('register'))
+    
+    # Create the user account
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute(
+            "INSERT INTO users (name, email, password, role, auth_provider, email_verified) VALUES (%s, %s, %s, %s, %s, %s)",
+            (pending['name'], pending['email'], pending['password'], pending['role'], 'email', True),
+        )
+    except Exception:
+        try:
+            cursor.execute(
+                "INSERT INTO users (name, email, password, role, auth_provider) VALUES (%s, %s, %s, %s, %s)",
+                (pending['name'], pending['email'], pending['password'], pending['role'], 'email'),
+            )
+        except Exception:
+            cursor.execute(
+                "INSERT INTO users (name, email, password, role) VALUES (%s, %s, %s, %s)",
+                (pending['name'], pending['email'], pending['password'], pending['role']),
+            )
+    
+    conn.commit()
+    
+    # Clean up
+    cursor.execute("DELETE FROM email_verifications WHERE email = %s", (email,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    
+    # Clear pending registration
+    session.pop('pending_registration', None)
+    
+    # Send welcome email (non-blocking)
+    try:
+        send_welcome_email(email, pending['name'])
+    except:
+        pass
+    
+    flash("Email verified successfully! Your account is now active. Please log in.", "success")
+    return redirect(url_for('login'))
+
+
+# Resend OTP
+@app.route('/resend-otp', methods=['POST'])
+@limiter.limit("3 per minute")
+def resend_otp():
+    email = request.form.get('email', '').lower().strip()
+    
+    if not email:
+        return redirect(url_for('register'))
+    
+    pending = session.get('pending_registration')
+    
+    if not pending or pending.get('email') != email:
+        flash("Session expired. Please register again.", "error")
+        return redirect(url_for('register'))
+    
+    conn = get_db_connection()
+    
+    # Generate new OTP
+    otp = generate_otp()
+    if create_otp_record(conn, email, otp):
+        success, message = send_otp_email(email, otp, pending['name'])
+        if success:
+            flash("A new verification code has been sent.", "success")
+        else:
+            flash(f"Failed to send email: {message}", "error")
+    else:
+        flash("Failed to generate new code. Please try again.", "error")
+    
+    conn.close()
+    return redirect(url_for('verify_email_page', email=email))
 
 
 # Login
