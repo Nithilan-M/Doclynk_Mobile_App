@@ -429,14 +429,18 @@ def google_callback():
                 )
                 conn.commit()
             else:
-                # Create new user - default to patient role
-                cursor.execute(
-                    "INSERT INTO users (name, email, google_id, role, auth_provider) VALUES (%s, %s, %s, %s, %s) RETURNING id, role, name",
-                    (name, email, google_id, 'patient', 'google')
-                )
-                user = cursor.fetchone()
-                conn.commit()
-                flash("Account created! You've been registered as a patient. Contact support to change your role.", "info")
+                # NEW USER: Redirect to role selection page
+                cursor.close()
+                conn.close()
+                
+                # Store OAuth data in session for role selection
+                session['pending_oauth'] = {
+                    'google_id': google_id,
+                    'email': email,
+                    'name': name
+                }
+                
+                return redirect(url_for('select_role_page'))
         
         cursor.close()
         conn.close()
@@ -454,6 +458,78 @@ def google_callback():
     except Exception as e:
         flash(f"Google sign-in failed. Please try again.", "error")
         return redirect(url_for('login'))
+
+
+# Role Selection Page for OAuth users
+@app.route('/select-role')
+def select_role_page():
+    """Show role selection page for new OAuth users."""
+    pending = session.get('pending_oauth')
+    if not pending:
+        return redirect(url_for('login'))
+    return render_template('select_role.html', name=pending['name'])
+
+
+# Complete OAuth Registration with selected role
+@app.route('/complete-oauth-registration', methods=['POST'])
+def complete_oauth_registration():
+    """Complete OAuth user registration with selected role."""
+    pending = session.get('pending_oauth')
+    if not pending:
+        flash("Session expired. Please try signing in again.", "error")
+        return redirect(url_for('login'))
+    
+    role = request.form.get('role')
+    if role not in ['doctor', 'patient']:
+        flash("Please select a valid role.", "error")
+        return redirect(url_for('select_role_page'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Create new user with selected role
+        cursor.execute(
+            "INSERT INTO users (name, email, google_id, role, auth_provider, email_verified) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id, role, name",
+            (pending['name'], pending['email'], pending['google_id'], role, 'google', True)
+        )
+        user = cursor.fetchone()
+        conn.commit()
+    except Exception:
+        # Fall back to old schema
+        try:
+            cursor.execute(
+                "INSERT INTO users (name, email, google_id, role, auth_provider) VALUES (%s, %s, %s, %s, %s) RETURNING id, role, name",
+                (pending['name'], pending['email'], pending['google_id'], role, 'google')
+            )
+            user = cursor.fetchone()
+            conn.commit()
+        except Exception:
+            cursor.execute(
+                "INSERT INTO users (name, email, role) VALUES (%s, %s, %s) RETURNING id, role, name",
+                (pending['name'], pending['email'], role)
+            )
+            user = cursor.fetchone()
+            conn.commit()
+    
+    cursor.close()
+    conn.close()
+    
+    # Clear pending OAuth data
+    session.pop('pending_oauth', None)
+    
+    # Set session
+    session['user_id'] = user[0]
+    session['role'] = user[1]
+    session['name'] = user[2]
+    session.permanent = True
+    
+    flash(f"Welcome to MediCare! You've been registered as a {role}.", "success")
+    
+    if role == 'doctor':
+        return redirect('/doctor/dashboard')
+    else:
+        return redirect('/patient/dashboard')
 
 
 # Doctor Dashboard

@@ -1,0 +1,90 @@
+{% extends 'index.html' %}
+{% block title %}Select Your Role - MediCare{% endblock %}
+
+{% block content %}
+<div class="aurora-bg min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-lg w-full space-y-8">
+
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div
+                class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-primary-500 to-secondary-500 rounded-full mb-6 shadow-lg">
+                <i class="fas fa-user-tag text-white text-3xl"></i>
+            </div>
+            <h2 class="text-3xl font-bold text-white mb-2">Welcome, {{ name }}!</h2>
+            <p class="text-white/80">One more step - please tell us who you are</p>
+        </div>
+
+        <!-- Role Selection -->
+        <form method="post" action="{{ url_for('complete_oauth_registration') }}" class="space-y-6">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Doctor Option -->
+                <label class="relative cursor-pointer group">
+                    <input type="radio" name="role" value="doctor" class="peer sr-only" required>
+                    <div class="p-6 bg-white/10 border-2 border-white/20 rounded-2xl text-center transition-all duration-300 
+                                peer-checked:border-primary-500 peer-checked:bg-primary-500/20 
+                                hover:bg-white/20 group-hover:scale-105">
+                        <div
+                            class="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full flex items-center justify-center shadow-lg">
+                            <i class="fas fa-user-md text-white text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">I'm a Doctor</h3>
+                        <p class="text-white/70 text-sm">Manage appointments, view patient requests, and provide
+                            healthcare services</p>
+                    </div>
+                    <div
+                        class="absolute top-3 right-3 w-6 h-6 rounded-full border-2 border-white/30 peer-checked:bg-primary-500 peer-checked:border-primary-500 flex items-center justify-center">
+                        <i class="fas fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i>
+                    </div>
+                </label>
+
+                <!-- Patient Option -->
+                <label class="relative cursor-pointer group">
+                    <input type="radio" name="role" value="patient" class="peer sr-only">
+                    <div class="p-6 bg-white/10 border-2 border-white/20 rounded-2xl text-center transition-all duration-300 
+                                peer-checked:border-secondary-500 peer-checked:bg-secondary-500/20 
+                                hover:bg-white/20 group-hover:scale-105">
+                        <div
+                            class="w-16 h-16 mx-auto mb-4 bg-gradient-to-r from-secondary-500 to-secondary-600 rounded-full flex items-center justify-center shadow-lg">
+                            <i class="fas fa-user text-white text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-2">I'm a Patient</h3>
+                        <p class="text-white/70 text-sm">Book appointments, manage your health records, and connect with
+                            doctors</p>
+                    </div>
+                    <div
+                        class="absolute top-3 right-3 w-6 h-6 rounded-full border-2 border-white/30 peer-checked:bg-secondary-500 peer-checked:border-secondary-500 flex items-center justify-center">
+                        <i class="fas fa-check text-white text-xs opacity-0 peer-checked:opacity-100"></i>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Continue Button -->
+            <button type="submit"
+                class="w-full flex items-center justify-center px-6 py-4 bg-gradient-to-r from-primary-500 to-secondary-500 text-white font-semibold rounded-xl hover:from-primary-600 hover:to-secondary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-300 hover:scale-105 shadow-lg text-lg">
+                <i class="fas fa-arrow-right mr-3"></i>Continue to Dashboard
+            </button>
+        </form>
+
+        <!-- Info -->
+        <div class="text-center">
+            <p class="text-white/60 text-sm">
+                <i class="fas fa-info-circle mr-1"></i>
+                This selection cannot be easily changed later. Please choose carefully.
+            </p>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Custom radio button styling */
+    input[type="radio"]:checked+div {
+        transform: scale(1.02);
+    }
+
+    input[type="radio"]:checked~div .fa-check {
+        opacity: 1 !important;
+    }
+</style>
+{% endblock %}
