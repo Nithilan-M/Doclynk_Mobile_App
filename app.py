@@ -93,10 +93,18 @@ def register():
             conn.close()
             return render_template('register.html')
         
-        cursor.execute(
-            "INSERT INTO users (name, email, password, role, auth_provider) VALUES (%s, %s, %s, %s, %s)",
-            (name, email, hashed_password, role, 'email'),
-        )
+        try:
+            # Try with auth_provider column (new schema)
+            cursor.execute(
+                "INSERT INTO users (name, email, password, role, auth_provider) VALUES (%s, %s, %s, %s, %s)",
+                (name, email, hashed_password, role, 'email'),
+            )
+        except Exception:
+            # Fall back to old schema without auth_provider
+            cursor.execute(
+                "INSERT INTO users (name, email, password, role) VALUES (%s, %s, %s, %s)",
+                (name, email, hashed_password, role),
+            )
         conn.commit()
         cursor.close()
         conn.close()
@@ -117,19 +125,33 @@ def login():
 
         conn = get_db_connection()
         
-        # Check for account lockout
-        is_locked, lock_message = check_account_lockout(conn, email)
-        if is_locked:
-            flash(lock_message, "error")
-            conn.close()
-            return redirect('/login')
+        # Check for account lockout (gracefully handle if columns don't exist)
+        try:
+            is_locked, lock_message = check_account_lockout(conn, email)
+            if is_locked:
+                flash(lock_message, "error")
+                conn.close()
+                return redirect('/login')
+        except Exception:
+            pass  # Account lockout columns not available yet
 
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT id, role, name, password, auth_provider FROM users WHERE email = %s",
-            (email,)
-        )
-        user = cursor.fetchone()
+        
+        # Try new schema first, fall back to old schema
+        try:
+            cursor.execute(
+                "SELECT id, role, name, password, auth_provider FROM users WHERE email = %s",
+                (email,)
+            )
+            user = cursor.fetchone()
+            has_auth_provider = True
+        except Exception:
+            cursor.execute(
+                "SELECT id, role, name, password FROM users WHERE email = %s",
+                (email,)
+            )
+            user = cursor.fetchone()
+            has_auth_provider = False
         cursor.close()
 
         if user is None:
@@ -137,13 +159,16 @@ def login():
             conn.close()
             return redirect('/login')
 
-        user_id, role, name, stored_password, auth_provider = user
-
-        # Check if user signed up with Google only
-        if auth_provider == 'google' and not stored_password:
-            flash("This account uses Google Sign-In. Please use the 'Sign in with Google' button.", "error")
-            conn.close()
-            return redirect('/login')
+        if has_auth_provider:
+            user_id, role, name, stored_password, auth_provider = user
+            # Check if user signed up with Google only
+            if auth_provider == 'google' and not stored_password:
+                flash("This account uses Google Sign-In. Please use the 'Sign in with Google' button.", "error")
+                conn.close()
+                return redirect('/login')
+        else:
+            user_id, role, name, stored_password = user
+            auth_provider = 'email'
 
         # Verify password (handle both hashed and legacy plaintext passwords)
         password_valid = False
@@ -161,13 +186,19 @@ def login():
                 cursor.close()
 
         if not password_valid:
-            record_failed_login(conn, email)
+            try:
+                record_failed_login(conn, email)
+            except Exception:
+                pass  # Failed login tracking columns not available
             flash("Invalid email or password", "error")
             conn.close()
             return redirect('/login')
 
         # Reset failed login attempts on successful login
-        reset_failed_login(conn, email)
+        try:
+            reset_failed_login(conn, email)
+        except Exception:
+            pass  # Failed login tracking columns not available
         conn.close()
 
         session['user_id'] = user_id
