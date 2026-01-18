@@ -102,15 +102,41 @@ def register():
         
         cursor.close()
         
-        # NOTE: Email OTP disabled because Render free tier blocks port 587 (SMTP)
-        # To enable, upgrade to Render paid tier or use HTTP-based email API (SendGrid)
-        # For now, users are registered directly without email verification
+        # Email OTP verification using Resend API (works on Render free tier!)
+        resend_api_key = os.getenv('RESEND_API_KEY')
+        if EMAIL_SERVICE_AVAILABLE and resend_api_key:
+            # Store registration data in session temporarily
+            session['pending_registration'] = {
+                'name': name,
+                'email': email,
+                'password': hash_password(password),
+                'role': role
+            }
+            
+            # Generate OTP and store in database
+            otp = generate_otp()
+            if create_otp_record(conn, email, otp):
+                conn.close()
+                
+                # Send email in background thread (non-blocking)
+                def send_email_background():
+                    try:
+                        success, msg = send_otp_email(email, otp, name)
+                        print(f"OTP email result: {success} - {msg}")
+                    except Exception as e:
+                        print(f"Background email error: {e}")
+                
+                send_email_async(send_email_background)
+                
+                flash("A verification code has been sent to your email. Please check your inbox.", "success")
+                return redirect(url_for('verify_email_page', email=email))
+            else:
+                flash("Failed to generate verification code. Please try again.", "error")
+            
+            conn.close()
+            return render_template('register.html')
         
-        # If you want to re-enable email OTP, uncomment the block below:
-        # if EMAIL_SERVICE_AVAILABLE and os.getenv('MAIL_USERNAME'):
-        #     ... email OTP code here ...
-        
-        # Register user directly (no email verification on Render free tier)
+        # If email service not available, register directly
         hashed_password = hash_password(password)
         cursor = conn.cursor()
         

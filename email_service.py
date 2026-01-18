@@ -1,20 +1,23 @@
 """
 Email Service Module for MediCare Application
-Handles OTP generation, email sending via Gmail SMTP, and verification.
-Uses threading to prevent blocking the main request thread.
+Uses Resend API for sending emails (works on Render free tier).
 """
 
 import os
 import random
 import string
-import smtplib
 import threading
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Try to import resend, fall back gracefully
+try:
+    import resend
+    RESEND_AVAILABLE = True
+except ImportError:
+    RESEND_AVAILABLE = False
 
 
 # =============================================================================
@@ -24,7 +27,7 @@ load_dotenv()
 def send_email_async(email_func, *args, **kwargs):
     """
     Wrapper to send emails in a background thread.
-    Prevents blocking the main request and avoids Gunicorn worker timeout.
+    Prevents blocking the main request.
     """
     thread = threading.Thread(target=email_func, args=args, kwargs=kwargs)
     thread.daemon = True
@@ -129,33 +132,35 @@ def mark_email_verified(conn, email: str) -> bool:
 
 
 # =============================================================================
-# EMAIL SENDING (Gmail SMTP)
+# EMAIL SENDING (Resend API - Works on Render Free Tier!)
 # =============================================================================
 
-def get_smtp_config():
-    """Get SMTP configuration from environment."""
-    return {
-        'server': 'smtp.gmail.com',
-        'port': 587,
-        'username': os.getenv('MAIL_USERNAME'),
-        'password': os.getenv('MAIL_PASSWORD'),
-    }
+def get_resend_config():
+    """Get Resend API configuration."""
+    api_key = os.getenv('RESEND_API_KEY')
+    from_email = os.getenv('RESEND_FROM_EMAIL', 'MediCare <onboarding@resend.dev>')
+    return api_key, from_email
 
 
 def send_otp_email(to_email: str, otp: str, name: str = "User") -> tuple[bool, str]:
     """
-    Send OTP email using Gmail SMTP.
+    Send OTP email using Resend API (HTTP-based, works on Render free tier).
     Returns (success, message)
     """
-    config = get_smtp_config()
+    if not RESEND_AVAILABLE:
+        print("Resend module not available")
+        return False, "Email service not installed"
     
-    if not config['username'] or not config['password']:
-        print("Email configuration missing")
+    api_key, from_email = get_resend_config()
+    
+    if not api_key:
+        print("Resend API key not configured")
         return False, "Email service not configured"
     
-    # Create email content
-    subject = "🔐 MediCare - Verify Your Email"
+    # Configure Resend
+    resend.api_key = api_key
     
+    # Create email content
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -200,55 +205,38 @@ def send_otp_email(to_email: str, otp: str, name: str = "User") -> tuple[bool, s
     </html>
     """
     
-    text_content = f"""
-    Hello {name}!
-    
-    Your MediCare verification code is: {otp}
-    
-    This code is valid for 10 minutes.
-    
-    If you didn't request this, please ignore this email.
-    
-    - MediCare Healthcare System
-    """
-    
     try:
-        # Create message
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From'] = f"MediCare <{config['username']}>"
-        msg['To'] = to_email
+        params = {
+            "from": from_email,
+            "to": [to_email],
+            "subject": "🔐 MediCare - Verify Your Email",
+            "html": html_content,
+        }
         
-        # Attach both plain text and HTML versions
-        msg.attach(MIMEText(text_content, 'plain'))
-        msg.attach(MIMEText(html_content, 'html'))
+        email_response = resend.Emails.send(params)
+        print(f"Resend response: {email_response}")
         
-        # Connect and send
-        with smtplib.SMTP(config['server'], config['port']) as server:
-            server.starttls()
-            server.login(config['username'], config['password'])
-            server.send_message(msg)
-        
-        return True, "OTP sent successfully!"
-        
-    except smtplib.SMTPAuthenticationError:
-        return False, "Email authentication failed. Check SMTP credentials."
-    except smtplib.SMTPException as e:
-        print(f"SMTP Error: {e}")
-        return False, "Failed to send email. Please try again."
+        if email_response and email_response.get('id'):
+            return True, "OTP sent successfully!"
+        else:
+            return False, "Failed to send email"
+            
     except Exception as e:
-        print(f"Email Error: {e}")
-        return False, "Email service error. Please try again."
+        print(f"Resend Error: {e}")
+        return False, f"Email service error: {str(e)}"
 
 
 def send_welcome_email(to_email: str, name: str) -> bool:
     """Send welcome email after successful registration."""
-    config = get_smtp_config()
-    
-    if not config['username'] or not config['password']:
+    if not RESEND_AVAILABLE:
         return False
     
-    subject = "🎉 Welcome to MediCare!"
+    api_key, from_email = get_resend_config()
+    
+    if not api_key:
+        return False
+    
+    resend.api_key = api_key
     
     html_content = f"""
     <!DOCTYPE html>
@@ -280,17 +268,14 @@ def send_welcome_email(to_email: str, name: str) -> bool:
     """
     
     try:
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From'] = f"MediCare <{config['username']}>"
-        msg['To'] = to_email
-        msg.attach(MIMEText(html_content, 'html'))
+        params = {
+            "from": from_email,
+            "to": [to_email],
+            "subject": "🎉 Welcome to MediCare!",
+            "html": html_content,
+        }
         
-        with smtplib.SMTP(config['server'], config['port']) as server:
-            server.starttls()
-            server.login(config['username'], config['password'])
-            server.send_message(msg)
-        
+        resend.Emails.send(params)
         return True
     except:
         return False
