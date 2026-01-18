@@ -138,7 +138,8 @@ def mark_email_verified(conn, email: str) -> bool:
 def get_resend_config():
     """Get Resend API configuration."""
     api_key = os.getenv('RESEND_API_KEY')
-    from_email = os.getenv('RESEND_FROM_EMAIL', 'MediCare <onboarding@resend.dev>')
+    # Use verified domain email or fall back to resend.dev for testing
+    from_email = os.getenv('RESEND_FROM_EMAIL', 'MediCare <noreply@doclynk.nithilan.tech>')
     return api_key, from_email
 
 
