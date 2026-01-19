@@ -62,6 +62,12 @@ def generate_time_slots():
     return slots
 
 
+# Health Check (for cron jobs to keep Render awake)
+@app.route('/health')
+def health_check():
+    return jsonify({"status": "healthy", "message": "MediCare is running"}), 200
+
+
 # Home
 @app.route('/')
 def home():
