@@ -15,7 +15,8 @@ from security import (
 try:
     from email_service import (
         generate_otp, create_otp_record, verify_otp as verify_otp_code,
-        mark_email_verified, send_otp_email, send_welcome_email, send_email_async
+        mark_email_verified, send_otp_email, send_welcome_email, send_email_async,
+        send_password_reset_email
     )
     EMAIL_SERVICE_AVAILABLE = True
 except ImportError:
@@ -281,6 +282,144 @@ def resend_otp():
     
     conn.close()
     return redirect(url_for('verify_email_page', email=email))
+
+
+# ============================================================================
+# FORGOT PASSWORD ROUTES
+# ============================================================================
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
+def forgot_password():
+    """Handle forgot password request."""
+    if request.method == 'POST':
+        email = request.form.get('email', '').lower().strip()
+        
+        if not email:
+            flash("Please enter your email address.", "error")
+            return render_template('forgot_password.html')
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT name FROM users WHERE email = %s", (email,))
+        user = cursor.fetchone()
+        cursor.close()
+        
+        if not user:
+            # Don't reveal if email exists or not (security)
+            flash("If an account with that email exists, we've sent a reset code.", "success")
+            conn.close()
+            return redirect(url_for('reset_password_page', email=email))
+        
+        name = user[0]
+        
+        # Generate OTP
+        otp = generate_otp()
+        if create_otp_record(conn, email, otp):
+            conn.close()
+            
+            # Send email in background
+            def send_reset_email_bg():
+                try:
+                    send_password_reset_email(email, otp, name)
+                except Exception as e:
+                    print(f"Reset email error: {e}")
+            
+            send_email_async(send_reset_email_bg)
+            
+            flash("A reset code has been sent to your email.", "success")
+            return redirect(url_for('reset_password_page', email=email))
+        
+        conn.close()
+        flash("Failed to generate reset code. Please try again.", "error")
+    
+    return render_template('forgot_password.html')
+
+
+@app.route('/reset-password')
+def reset_password_page():
+    """Show reset password form."""
+    email = request.args.get('email', '')
+    if not email:
+        return redirect(url_for('forgot_password'))
+    return render_template('reset_password.html', email=email)
+
+
+@app.route('/reset-password', methods=['POST'])
+@limiter.limit("5 per minute")
+def reset_password():
+    """Reset password with OTP verification."""
+    email = request.form.get('email', '').lower().strip()
+    otp = request.form.get('otp', '')
+    password = request.form.get('password', '')
+    confirm_password = request.form.get('confirm_password', '')
+    
+    if not all([email, otp, password, confirm_password]):
+        flash("Please fill in all fields.", "error")
+        return redirect(url_for('reset_password_page', email=email))
+    
+    if password != confirm_password:
+        flash("Passwords do not match.", "error")
+        return redirect(url_for('reset_password_page', email=email))
+    
+    if len(password) < 8:
+        flash("Password must be at least 8 characters.", "error")
+        return redirect(url_for('reset_password_page', email=email))
+    
+    conn = get_db_connection()
+    
+    # Verify OTP
+    is_valid, message = verify_otp_code(conn, email, otp)
+    
+    if not is_valid:
+        conn.close()
+        flash(message, "error")
+        return redirect(url_for('reset_password_page', email=email))
+    
+    # Update password
+    cursor = conn.cursor()
+    hashed_password = hash_password(password)
+    
+    cursor.execute("UPDATE users SET password = %s WHERE email = %s", (hashed_password, email))
+    cursor.execute("DELETE FROM email_verifications WHERE email = %s", (email,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    
+    flash("Password reset successfully! Please log in with your new password.", "success")
+    return redirect(url_for('login'))
+
+
+@app.route('/resend-reset-otp', methods=['POST'])
+@limiter.limit("3 per minute")
+def resend_reset_otp():
+    """Resend password reset OTP."""
+    email = request.form.get('email', '').lower().strip()
+    
+    if not email:
+        return redirect(url_for('forgot_password'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM users WHERE email = %s", (email,))
+    user = cursor.fetchone()
+    cursor.close()
+    
+    if user:
+        name = user[0]
+        otp = generate_otp()
+        if create_otp_record(conn, email, otp):
+            def send_bg():
+                send_password_reset_email(email, otp, name)
+            send_email_async(send_bg)
+            flash("A new reset code has been sent.", "success")
+        else:
+            flash("Failed to generate code. Please try again.", "error")
+    else:
+        flash("A new reset code has been sent.", "success")  # Don't reveal if email exists
+    
+    conn.close()
+    return redirect(url_for('reset_password_page', email=email))
 
 
 # Login

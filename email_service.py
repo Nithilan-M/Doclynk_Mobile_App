@@ -280,3 +280,78 @@ def send_welcome_email(to_email: str, name: str) -> bool:
         return True
     except:
         return False
+
+
+def send_password_reset_email(to_email: str, otp: str, name: str = "User") -> tuple[bool, str]:
+    """
+    Send password reset OTP email.
+    Returns (success, message)
+    """
+    if not RESEND_AVAILABLE:
+        return False, "Email service not installed"
+    
+    api_key, from_email = get_resend_config()
+    
+    if not api_key:
+        return False, "Email service not configured"
+    
+    resend.api_key = api_key
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: 'Segoe UI', sans-serif; background: #f4f4f4; margin: 0; padding: 20px; }}
+            .container {{ max-width: 500px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }}
+            .header {{ background: linear-gradient(135deg, #f59e0b, #ef4444); padding: 30px; text-align: center; }}
+            .header h1 {{ color: white; margin: 0; font-size: 28px; }}
+            .content {{ padding: 40px 30px; text-align: center; }}
+            .otp-box {{ background: linear-gradient(135deg, #fef3c7, #fecaca); border: 2px dashed #f59e0b; border-radius: 12px; padding: 25px; margin: 25px 0; }}
+            .otp-code {{ font-size: 42px; font-weight: bold; color: #b45309; letter-spacing: 8px; font-family: monospace; }}
+            .timer {{ color: #6b7280; font-size: 14px; margin-top: 15px; }}
+            .footer {{ background: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 12px; }}
+            .warning {{ background: #fee2e2; border-left: 4px solid #ef4444; padding: 12px; margin: 20px 0; text-align: left; border-radius: 8px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🔐 Password Reset</h1>
+            </div>
+            <div class="content">
+                <h2 style="color: #1f2937; margin-bottom: 10px;">Hello, {name}!</h2>
+                <p style="color: #4b5563;">You requested to reset your password. Use this code:</p>
+                
+                <div class="otp-box">
+                    <div class="otp-code">{otp}</div>
+                    <div class="timer">⏱️ Valid for 10 minutes</div>
+                </div>
+                
+                <div class="warning">
+                    <strong>⚠️ Didn't request this?</strong> If you didn't request a password reset, please ignore this email. Your password won't be changed.
+                </div>
+            </div>
+            <div class="footer">
+                <p>This email was sent by MediCare Healthcare System</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    try:
+        params = {
+            "from": from_email,
+            "to": [to_email],
+            "subject": "🔐 MediCare - Password Reset Code",
+            "html": html_content,
+        }
+        
+        email_response = resend.Emails.send(params)
+        if email_response and email_response.get('id'):
+            return True, "Reset code sent successfully!"
+        return False, "Failed to send email"
+    except Exception as e:
+        print(f"Password reset email error: {e}")
+        return False, f"Email error: {str(e)}"
