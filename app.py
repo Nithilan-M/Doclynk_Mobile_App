@@ -8,7 +8,8 @@ from security import (
     hash_password, verify_password, is_password_hashed,
     validate_email, validate_password_strength, sanitize_input,
     create_limiter, create_oauth, add_security_headers,
-    check_account_lockout, record_failed_login, reset_failed_login
+    check_account_lockout, record_failed_login, reset_failed_login,
+    admin_required
 )
 
 # Import email service for OTP
@@ -426,6 +427,15 @@ def resend_reset_otp():
 @app.route('/login', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
 def login():
+    # Redirect already logged-in users to their dashboard
+    if 'user_id' in session and 'role' in session:
+        if session.get('is_admin'):
+            return redirect('/admin/dashboard')
+        elif session['role'] == 'doctor':
+            return redirect('/doctor/dashboard')
+        else:
+            return redirect('/patient/dashboard')
+    
     if request.method == 'POST':
         email = request.form['email'].lower().strip()
         password = request.form['password']
@@ -444,21 +454,32 @@ def login():
 
         cursor = conn.cursor()
         
-        # Try new schema first, fall back to old schema
+        # Try new schema with is_admin, fall back to older schemas
         try:
             cursor.execute(
-                "SELECT id, role, name, password, auth_provider FROM users WHERE email = %s",
+                "SELECT id, role, name, password, auth_provider, is_admin FROM users WHERE email = %s",
                 (email,)
             )
             user = cursor.fetchone()
             has_auth_provider = True
+            has_is_admin = True
         except Exception:
-            cursor.execute(
-                "SELECT id, role, name, password FROM users WHERE email = %s",
-                (email,)
-            )
-            user = cursor.fetchone()
-            has_auth_provider = False
+            try:
+                cursor.execute(
+                    "SELECT id, role, name, password, auth_provider FROM users WHERE email = %s",
+                    (email,)
+                )
+                user = cursor.fetchone()
+                has_auth_provider = True
+                has_is_admin = False
+            except Exception:
+                cursor.execute(
+                    "SELECT id, role, name, password FROM users WHERE email = %s",
+                    (email,)
+                )
+                user = cursor.fetchone()
+                has_auth_provider = False
+                has_is_admin = False
         cursor.close()
 
         if user is None:
@@ -466,8 +487,16 @@ def login():
             conn.close()
             return redirect('/login')
 
-        if has_auth_provider:
+        if has_is_admin:
+            user_id, role, name, stored_password, auth_provider, is_admin = user
+            # Check if user signed up with Google only
+            if auth_provider == 'google' and not stored_password:
+                flash("This account uses Google Sign-In. Please use the 'Sign in with Google' button.", "error")
+                conn.close()
+                return redirect('/login')
+        elif has_auth_provider:
             user_id, role, name, stored_password, auth_provider = user
+            is_admin = False
             # Check if user signed up with Google only
             if auth_provider == 'google' and not stored_password:
                 flash("This account uses Google Sign-In. Please use the 'Sign in with Google' button.", "error")
@@ -476,6 +505,7 @@ def login():
         else:
             user_id, role, name, stored_password = user
             auth_provider = 'email'
+            is_admin = False
 
         # Verify password (handle both hashed and legacy plaintext passwords)
         password_valid = False
@@ -511,9 +541,13 @@ def login():
         session['user_id'] = user_id
         session['role'] = role
         session['name'] = name
+        session['is_admin'] = is_admin
         session.permanent = True
 
-        if role == 'doctor':
+        # Redirect admin users to admin dashboard
+        if is_admin:
+            return redirect('/admin/dashboard')
+        elif role == 'doctor':
             return redirect('/doctor/dashboard')
         else:
             return redirect('/patient/dashboard')
@@ -602,6 +636,7 @@ def google_callback():
             return redirect('/patient/dashboard')
             
     except Exception as e:
+        print(f"Google OAuth Error: {e}")  # Log the actual error
         flash(f"Google sign-in failed. Please try again.", "error")
         return redirect(url_for('login'))
 
@@ -842,6 +877,361 @@ def delete_appointment(appointment_id):
     cursor.close()
     conn.close()
     return redirect(url_for(session['role'] + '_dashboard'))
+
+
+# ============================================================================
+# ADMIN ROUTES
+# ============================================================================
+
+@app.route('/admin/dashboard')
+@admin_required
+def admin_dashboard():
+    """Admin dashboard with system overview."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Get user statistics
+    cursor.execute("SELECT COUNT(*) FROM users")
+    total_users = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'doctor'")
+    total_doctors = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM users WHERE role = 'patient'")
+    total_patients = cursor.fetchone()[0]
+    
+    # Get admin count
+    try:
+        cursor.execute("SELECT COUNT(*) FROM users WHERE is_admin = TRUE")
+        total_admins = cursor.fetchone()[0]
+    except Exception:
+        total_admins = 0
+    
+    # Get appointment statistics
+    cursor.execute("SELECT COUNT(*) FROM appointments")
+    total_appointments = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM appointments WHERE status = 'Pending'")
+    pending_appointments = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM appointments WHERE status = 'Approved'")
+    approved_appointments = cursor.fetchone()[0]
+    
+    cursor.execute("SELECT COUNT(*) FROM appointments WHERE status = 'Rejected'")
+    rejected_appointments = cursor.fetchone()[0]
+    
+    # Get recent users (last 5)
+    try:
+        cursor.execute("""
+            SELECT id, name, email, role, is_admin 
+            FROM users 
+            ORDER BY id DESC 
+            LIMIT 5
+        """)
+        colnames = [desc[0] for desc in cursor.description]
+        recent_users = [dict(zip(colnames, row)) for row in cursor.fetchall()]
+    except Exception:
+        cursor.execute("""
+            SELECT id, name, email, role 
+            FROM users 
+            ORDER BY id DESC 
+            LIMIT 5
+        """)
+        colnames = [desc[0] for desc in cursor.description]
+        recent_users = [dict(zip(colnames, row)) for row in cursor.fetchall()]
+        for user in recent_users:
+            user['is_admin'] = False
+    
+    # Get recent appointments (last 5)
+    cursor.execute("""
+        SELECT a.id, a.date, a.time_slot, a.status, a.reason,
+               p.name AS patient_name, d.name AS doctor_name
+        FROM appointments a
+        JOIN users p ON a.patient_id = p.id
+        JOIN users d ON a.doctor_id = d.id
+        ORDER BY a.id DESC
+        LIMIT 5
+    """)
+    colnames = [desc[0] for desc in cursor.description]
+    recent_appointments = [dict(zip(colnames, row)) for row in cursor.fetchall()]
+    
+    cursor.close()
+    conn.close()
+    
+    stats = {
+        'total_users': total_users,
+        'total_doctors': total_doctors,
+        'total_patients': total_patients,
+        'total_admins': total_admins,
+        'total_appointments': total_appointments,
+        'pending_appointments': pending_appointments,
+        'approved_appointments': approved_appointments,
+        'rejected_appointments': rejected_appointments
+    }
+    
+    return render_template('admin_dashboard.html', 
+                           name=session['name'], 
+                           stats=stats,
+                           recent_users=recent_users,
+                           recent_appointments=recent_appointments)
+
+
+@app.route('/admin/users')
+@admin_required
+def admin_users():
+    """List all users with search/filter capabilities."""
+    search = request.args.get('search', '').strip()
+    role_filter = request.args.get('role', '')
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Build query based on filters
+    query = "SELECT id, name, email, role, auth_provider, email_verified, is_admin FROM users WHERE 1=1"
+    params = []
+    
+    if search:
+        query += " AND (name ILIKE %s OR email ILIKE %s)"
+        params.extend([f'%{search}%', f'%{search}%'])
+    
+    if role_filter:
+        query += " AND role = %s"
+        params.append(role_filter)
+    
+    query += " ORDER BY id DESC"
+    
+    try:
+        cursor.execute(query, params)
+        colnames = [desc[0] for desc in cursor.description]
+        users = [dict(zip(colnames, row)) for row in cursor.fetchall()]
+    except Exception:
+        # Fallback for older schema
+        query = "SELECT id, name, email, role FROM users WHERE 1=1"
+        params = []
+        if search:
+            query += " AND (name ILIKE %s OR email ILIKE %s)"
+            params.extend([f'%{search}%', f'%{search}%'])
+        if role_filter:
+            query += " AND role = %s"
+            params.append(role_filter)
+        query += " ORDER BY id DESC"
+        
+        cursor.execute(query, params)
+        colnames = [desc[0] for desc in cursor.description]
+        users = [dict(zip(colnames, row)) for row in cursor.fetchall()]
+        for user in users:
+            user['auth_provider'] = 'email'
+            user['email_verified'] = True
+            user['is_admin'] = False
+    
+    cursor.close()
+    conn.close()
+    
+    return render_template('admin_users.html', 
+                           name=session['name'], 
+                           users=users,
+                           search=search,
+                           role_filter=role_filter)
+
+
+@app.route('/admin/users/<int:user_id>/edit', methods=['GET', 'POST'])
+@admin_required
+def admin_edit_user(user_id):
+    """Edit user details."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    if request.method == 'POST':
+        name = sanitize_input(request.form.get('name', ''))
+        email = request.form.get('email', '').lower().strip()
+        role = request.form.get('role', '')
+        
+        if not all([name, email, role]):
+            flash("All fields are required.", "error")
+            return redirect(url_for('admin_edit_user', user_id=user_id))
+        
+        if role not in ['doctor', 'patient']:
+            flash("Invalid role.", "error")
+            return redirect(url_for('admin_edit_user', user_id=user_id))
+        
+        cursor.execute(
+            "UPDATE users SET name = %s, email = %s, role = %s WHERE id = %s",
+            (name, email, role, user_id)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        flash("User updated successfully.", "success")
+        return redirect(url_for('admin_users'))
+    
+    # GET request - show edit form
+    try:
+        cursor.execute(
+            "SELECT id, name, email, role, auth_provider, is_admin FROM users WHERE id = %s",
+            (user_id,)
+        )
+    except Exception:
+        cursor.execute(
+            "SELECT id, name, email, role FROM users WHERE id = %s",
+            (user_id,)
+        )
+    
+    user = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('admin_users'))
+    
+    colnames = ['id', 'name', 'email', 'role'] if len(user) == 4 else ['id', 'name', 'email', 'role', 'auth_provider', 'is_admin']
+    user_dict = dict(zip(colnames, user))
+    
+    return render_template('admin_edit_user.html', name=session['name'], user=user_dict)
+
+
+@app.route('/admin/users/<int:user_id>/delete', methods=['POST'])
+@admin_required
+def admin_delete_user(user_id):
+    """Delete a user."""
+    # Prevent self-deletion
+    if user_id == session['user_id']:
+        flash("You cannot delete your own account.", "error")
+        return redirect(url_for('admin_users'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Delete user's appointments first
+    cursor.execute("DELETE FROM appointments WHERE patient_id = %s OR doctor_id = %s", (user_id, user_id))
+    
+    # Delete user
+    cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    
+    flash("User deleted successfully.", "success")
+    return redirect(url_for('admin_users'))
+
+
+@app.route('/admin/users/<int:user_id>/toggle-admin', methods=['POST'])
+@admin_required
+def admin_toggle_admin(user_id):
+    """Toggle admin status for a user."""
+    # Prevent self-demotion
+    if user_id == session['user_id']:
+        flash("You cannot modify your own admin status.", "error")
+        return redirect(url_for('admin_users'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Get current admin status
+        cursor.execute("SELECT is_admin FROM users WHERE id = %s", (user_id,))
+        result = cursor.fetchone()
+        
+        if result:
+            new_status = not result[0]
+            cursor.execute("UPDATE users SET is_admin = %s WHERE id = %s", (new_status, user_id))
+            conn.commit()
+            flash(f"Admin status {'granted' if new_status else 'revoked'} successfully.", "success")
+        else:
+            flash("User not found.", "error")
+    except Exception as e:
+        flash("Failed to update admin status. Make sure the database has the is_admin column.", "error")
+    
+    cursor.close()
+    conn.close()
+    return redirect(url_for('admin_users'))
+
+
+@app.route('/admin/appointments')
+@admin_required
+def admin_appointments():
+    """List all appointments with filters."""
+    status_filter = request.args.get('status', '')
+    doctor_filter = request.args.get('doctor', '')
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Get all doctors for filter dropdown
+    cursor.execute("SELECT id, name FROM users WHERE role = 'doctor' ORDER BY name")
+    doctors = [{'id': row[0], 'name': row[1]} for row in cursor.fetchall()]
+    
+    # Build query
+    query = """
+        SELECT a.id, a.date, a.time_slot, a.status, a.reason,
+               a.patient_id, a.doctor_id,
+               p.name AS patient_name, p.email AS patient_email,
+               d.name AS doctor_name, d.email AS doctor_email
+        FROM appointments a
+        JOIN users p ON a.patient_id = p.id
+        JOIN users d ON a.doctor_id = d.id
+        WHERE 1=1
+    """
+    params = []
+    
+    if status_filter:
+        query += " AND a.status = %s"
+        params.append(status_filter)
+    
+    if doctor_filter:
+        query += " AND a.doctor_id = %s"
+        params.append(doctor_filter)
+    
+    query += " ORDER BY a.date DESC, a.time_slot DESC"
+    
+    cursor.execute(query, params)
+    colnames = [desc[0] for desc in cursor.description]
+    appointments = [dict(zip(colnames, row)) for row in cursor.fetchall()]
+    
+    cursor.close()
+    conn.close()
+    
+    return render_template('admin_appointments.html',
+                           name=session['name'],
+                           appointments=appointments,
+                           doctors=doctors,
+                           status_filter=status_filter,
+                           doctor_filter=doctor_filter)
+
+
+@app.route('/admin/appointments/<int:appointment_id>/status/<status>', methods=['POST'])
+@admin_required
+def admin_update_appointment_status(appointment_id, status):
+    """Update appointment status as admin."""
+    if status not in ['Pending', 'Approved', 'Rejected', 'Completed']:
+        flash("Invalid status.", "error")
+        return redirect(url_for('admin_appointments'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE appointments SET status = %s WHERE id = %s", (status, appointment_id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    
+    flash(f"Appointment status updated to {status}.", "success")
+    return redirect(url_for('admin_appointments'))
+
+
+@app.route('/admin/appointments/<int:appointment_id>/delete', methods=['POST'])
+@admin_required
+def admin_delete_appointment(appointment_id):
+    """Delete an appointment as admin."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM appointments WHERE id = %s", (appointment_id,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    
+    flash("Appointment deleted successfully.", "success")
+    return redirect(url_for('admin_appointments'))
 
 
 # Logout

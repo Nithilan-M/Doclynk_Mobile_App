@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -78,15 +79,24 @@
     }
 
     @keyframes aurora {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
+      0% {
+        background-position: 0% 50%;
+      }
+
+      50% {
+        background-position: 100% 50%;
+      }
+
+      100% {
+        background-position: 0% 50%;
+      }
     }
 
     /* Removed glassmorphism completely */
     .btn-glow {
       transition: all 0.3s ease;
     }
+
     .btn-glow:hover {
       transform: translateY(-2px) scale(1.05);
       box-shadow: 0 10px 25px -5px rgba(14, 165, 233, 0.4);
@@ -115,6 +125,12 @@
             <i class="fas fa-user-circle text-lg"></i>
             <span class="font-medium">{{ session.get('name', 'User') }}</span>
           </div>
+          {% if session.get('is_admin') %}
+          <a href="{{ url_for('admin_dashboard') }}"
+            class="btn-glow inline-flex items-center px-4 py-2 bg-gradient-to-r from-accent-500 to-accent-600 text-white font-medium rounded-xl shadow-md">
+            <i class="fas fa-shield-alt mr-2"></i> Admin
+          </a>
+          {% endif %}
           <a href="{{ url_for('logout') }}"
             class="btn-glow inline-flex items-center px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white font-medium rounded-xl shadow-md">
             <i class="fas fa-sign-out-alt mr-2"></i> Logout
@@ -150,4 +166,5 @@
     </div>
   </footer>
 </body>
+
 </html>

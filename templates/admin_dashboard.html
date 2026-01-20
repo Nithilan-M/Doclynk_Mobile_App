@@ -1,0 +1,230 @@
+{% extends 'index.html' %}
+{% block title %}Admin Dashboard - MediCare{% endblock %}
+
+{% block content %}
+<!-- Dashboard Header -->
+<div class="text-center mb-14 animate-fade-in">
+    <div
+        class="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-accent-500 to-accent-700 rounded-2xl shadow-lg shadow-accent-700/50 mb-6">
+        <i class="fas fa-shield-alt text-white text-3xl"></i>
+    </div>
+    <h1 class="text-4xl md:text-5xl font-extrabold text-white drop-shadow-lg mb-3">
+        Admin Dashboard
+    </h1>
+    <p class="text-lg md:text-xl text-white/80 max-w-2xl mx-auto">
+        Welcome, {{ name }}! Manage users, appointments, and system settings 🛡️
+    </p>
+</div>
+
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+{% for category, message in messages %}
+<div class="mb-8 p-4 rounded-2xl border-l-4 shadow-lg backdrop-blur-md
+                {% if category == 'success' %}bg-green-100/90 border-green-500 text-green-800
+                {% elif category == 'error' %}bg-red-100/90 border-red-500 text-red-800
+                {% else %}bg-blue-100/90 border-blue-500 text-blue-800{% endif %}">
+    <div class="flex items-center">
+        <i class="fas fa-{% if category == 'success' %}check-circle text-green-600
+                                   {% elif category == 'error' %}exclamation-circle text-red-600
+                                   {% else %}info-circle text-blue-600{% endif %} mr-3"></i>
+        <span class="font-medium">{{ message }}</span>
+    </div>
+</div>
+{% endfor %}
+{% endif %}
+{% endwith %}
+
+<!-- Statistics Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+    <!-- Total Users -->
+    <div class="glass-card p-6 text-center hover:scale-105 transition-transform">
+        <div
+            class="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-primary-500 to-primary-700 rounded-xl mb-4">
+            <i class="fas fa-users text-white text-2xl"></i>
+        </div>
+        <div class="text-3xl font-bold text-white">{{ stats.total_users }}</div>
+        <div class="text-white/70">Total Users</div>
+    </div>
+
+    <!-- Doctors -->
+    <div class="glass-card p-6 text-center hover:scale-105 transition-transform">
+        <div
+            class="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-secondary-500 to-secondary-700 rounded-xl mb-4">
+            <i class="fas fa-user-md text-white text-2xl"></i>
+        </div>
+        <div class="text-3xl font-bold text-white">{{ stats.total_doctors }}</div>
+        <div class="text-white/70">Doctors</div>
+    </div>
+
+    <!-- Patients -->
+    <div class="glass-card p-6 text-center hover:scale-105 transition-transform">
+        <div
+            class="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-blue-500 to-blue-700 rounded-xl mb-4">
+            <i class="fas fa-user-injured text-white text-2xl"></i>
+        </div>
+        <div class="text-3xl font-bold text-white">{{ stats.total_patients }}</div>
+        <div class="text-white/70">Patients</div>
+    </div>
+
+    <!-- Appointments -->
+    <div class="glass-card p-6 text-center hover:scale-105 transition-transform">
+        <div
+            class="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-xl mb-4">
+            <i class="fas fa-calendar-check text-white text-2xl"></i>
+        </div>
+        <div class="text-3xl font-bold text-white">{{ stats.total_appointments }}</div>
+        <div class="text-white/70">Appointments</div>
+    </div>
+</div>
+
+<!-- Appointment Status Stats -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+    <div class="glass-card p-5 flex items-center gap-4">
+        <div class="w-12 h-12 bg-yellow-500/20 rounded-xl flex items-center justify-center">
+            <i class="fas fa-clock text-yellow-400 text-xl"></i>
+        </div>
+        <div>
+            <div class="text-2xl font-bold text-white">{{ stats.pending_appointments }}</div>
+            <div class="text-white/70 text-sm">Pending</div>
+        </div>
+    </div>
+    <div class="glass-card p-5 flex items-center gap-4">
+        <div class="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
+            <i class="fas fa-check-circle text-green-400 text-xl"></i>
+        </div>
+        <div>
+            <div class="text-2xl font-bold text-white">{{ stats.approved_appointments }}</div>
+            <div class="text-white/70 text-sm">Approved</div>
+        </div>
+    </div>
+    <div class="glass-card p-5 flex items-center gap-4">
+        <div class="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
+            <i class="fas fa-times-circle text-red-400 text-xl"></i>
+        </div>
+        <div>
+            <div class="text-2xl font-bold text-white">{{ stats.rejected_appointments }}</div>
+            <div class="text-white/70 text-sm">Rejected</div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+    <a href="{{ url_for('admin_users') }}"
+        class="glass-card p-6 flex items-center gap-6 hover:scale-[1.02] transition-transform group">
+        <div
+            class="w-16 h-16 bg-gradient-to-r from-primary-500 to-primary-700 rounded-xl flex items-center justify-center group-hover:shadow-lg group-hover:shadow-primary-500/30 transition-shadow">
+            <i class="fas fa-users-cog text-white text-2xl"></i>
+        </div>
+        <div>
+            <h3 class="text-xl font-bold text-white mb-1">Manage Users</h3>
+            <p class="text-white/70">View, edit, and delete user accounts</p>
+        </div>
+        <i class="fas fa-chevron-right text-white/50 ml-auto text-xl"></i>
+    </a>
+
+    <a href="{{ url_for('admin_appointments') }}"
+        class="glass-card p-6 flex items-center gap-6 hover:scale-[1.02] transition-transform group">
+        <div
+            class="w-16 h-16 bg-gradient-to-r from-secondary-500 to-secondary-700 rounded-xl flex items-center justify-center group-hover:shadow-lg group-hover:shadow-secondary-500/30 transition-shadow">
+            <i class="fas fa-calendar-alt text-white text-2xl"></i>
+        </div>
+        <div>
+            <h3 class="text-xl font-bold text-white mb-1">Manage Appointments</h3>
+            <p class="text-white/70">View and manage all appointments</p>
+        </div>
+        <i class="fas fa-chevron-right text-white/50 ml-auto text-xl"></i>
+    </a>
+</div>
+
+<!-- Recent Activity Section -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <!-- Recent Users -->
+    <div class="glass-card p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold text-white flex items-center">
+                <i class="fas fa-user-plus mr-3 text-primary-300"></i>
+                Recent Users
+            </h2>
+            <a href="{{ url_for('admin_users') }}" class="text-primary-300 hover:text-primary-200 text-sm">
+                View All <i class="fas fa-arrow-right ml-1"></i>
+            </a>
+        </div>
+        {% if recent_users %}
+        <div class="space-y-3">
+            {% for user in recent_users %}
+            <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-10 h-10 bg-gradient-to-r {% if user.role == 'doctor' %}from-secondary-500 to-secondary-700{% else %}from-primary-500 to-primary-700{% endif %} rounded-full flex items-center justify-center">
+                        <i class="fas fa-{% if user.role == 'doctor' %}user-md{% else %}user{% endif %} text-white"></i>
+                    </div>
+                    <div>
+                        <div class="text-white font-medium">{{ user.name }}</div>
+                        <div class="text-white/60 text-sm">{{ user.email }}</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span
+                        class="px-2 py-1 text-xs rounded-full {% if user.role == 'doctor' %}bg-secondary-500/20 text-secondary-300{% else %}bg-primary-500/20 text-primary-300{% endif %}">
+                        {{ user.role|capitalize }}
+                    </span>
+                    {% if user.is_admin %}
+                    <span class="px-2 py-1 text-xs rounded-full bg-accent-500/20 text-accent-300">
+                        <i class="fas fa-shield-alt mr-1"></i>Admin
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-8 text-white/60">
+            <i class="fas fa-users text-4xl mb-3 opacity-50"></i>
+            <p>No users registered yet</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Recent Appointments -->
+    <div class="glass-card p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold text-white flex items-center">
+                <i class="fas fa-calendar-check mr-3 text-secondary-300"></i>
+                Recent Appointments
+            </h2>
+            <a href="{{ url_for('admin_appointments') }}" class="text-secondary-300 hover:text-secondary-200 text-sm">
+                View All <i class="fas fa-arrow-right ml-1"></i>
+            </a>
+        </div>
+        {% if recent_appointments %}
+        <div class="space-y-3">
+            {% for app in recent_appointments %}
+            <div class="p-3 bg-white/5 rounded-xl hover:bg-white/10 transition">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-white font-medium">{{ app.patient_name }}</span>
+                    <span class="px-2 py-1 text-xs rounded-full 
+                            {% if app.status == 'Pending' %}bg-yellow-500/20 text-yellow-300
+                            {% elif app.status == 'Approved' %}bg-green-500/20 text-green-300
+                            {% else %}bg-red-500/20 text-red-300{% endif %}">
+                        {{ app.status }}
+                    </span>
+                </div>
+                <div class="text-white/60 text-sm flex items-center gap-4">
+                    <span><i class="fas fa-user-md mr-1"></i> Dr. {{ app.doctor_name }}</span>
+                    <span><i class="fas fa-calendar mr-1"></i> {{ app.date }}</span>
+                    <span><i class="fas fa-clock mr-1"></i> {{ app.time_slot or 'N/A' }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center py-8 text-white/60">
+            <i class="fas fa-calendar-times text-4xl mb-3 opacity-50"></i>
+            <p>No appointments yet</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
