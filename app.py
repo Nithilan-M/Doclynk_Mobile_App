@@ -178,6 +178,26 @@ def register():
                     (name, email, hashed_password, role),
                 )
         conn.commit()
+        
+        # Get the new user's ID for IP tracking
+        cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+        new_user = cursor.fetchone()
+        new_user_id = new_user[0] if new_user else None
+        
+        # Track registration IP and timestamp
+        if new_user_id:
+            try:
+                client_ip = get_client_ip()
+                print(f"[IP TRACKING] New direct email user {new_user_id} registered from IP: {client_ip}")
+                cursor.execute(
+                    "UPDATE users SET last_login_ip = %s, last_login_at = %s WHERE id = %s",
+                    (client_ip, datetime.now(), new_user_id)
+                )
+                conn.commit()
+                print(f"[IP TRACKING] Successfully stored IP for new user {new_user_id}")
+            except Exception as e:
+                print(f"[IP TRACKING ERROR] Failed to store IP for new user {new_user_id}: {e}")
+        
         cursor.close()
         conn.close()
         
@@ -247,9 +267,29 @@ def verify_otp():
     
     conn.commit()
     
+    # Get the new user's ID for IP tracking
+    cursor.execute("SELECT id FROM users WHERE email = %s", (pending['email'],))
+    new_user = cursor.fetchone()
+    new_user_id = new_user[0] if new_user else None
+    
     # Clean up
     cursor.execute("DELETE FROM email_verifications WHERE email = %s", (email,))
     conn.commit()
+    
+    # Track registration IP and timestamp
+    if new_user_id:
+        try:
+            client_ip = get_client_ip()
+            print(f"[IP TRACKING] New email user {new_user_id} registered from IP: {client_ip}")
+            cursor.execute(
+                "UPDATE users SET last_login_ip = %s, last_login_at = %s WHERE id = %s",
+                (client_ip, datetime.now(), new_user_id)
+            )
+            conn.commit()
+            print(f"[IP TRACKING] Successfully stored IP for new user {new_user_id}")
+        except Exception as e:
+            print(f"[IP TRACKING ERROR] Failed to store IP for new user {new_user_id}: {e}")
+    
     cursor.close()
     conn.close()
     
