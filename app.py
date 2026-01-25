@@ -553,6 +553,7 @@ def login():
         # Track login IP and timestamp
         try:
             client_ip = get_client_ip()
+            print(f"[IP TRACKING] User {user_id} login from IP: {client_ip}")
             cursor = conn.cursor()
             cursor.execute(
                 "UPDATE users SET last_login_ip = %s, last_login_at = %s WHERE id = %s",
@@ -560,8 +561,9 @@ def login():
             )
             conn.commit()
             cursor.close()
-        except Exception:
-            pass  # IP tracking columns not available yet
+            print(f"[IP TRACKING] Successfully stored IP for user {user_id}")
+        except Exception as e:
+            print(f"[IP TRACKING ERROR] Failed to store IP for user {user_id}: {e}")
         
         conn.close()
 
