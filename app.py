@@ -650,6 +650,20 @@ def google_callback():
                 return redirect(url_for('select_role_page'))
         
         cursor.close()
+        
+        # Track login IP and timestamp for Google OAuth
+        try:
+            client_ip = get_client_ip()
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE users SET last_login_ip = %s, last_login_at = %s WHERE id = %s",
+                (client_ip, datetime.now(), user[0])
+            )
+            conn.commit()
+            cursor.close()
+        except Exception:
+            pass  # IP tracking columns not available yet
+        
         conn.close()
         
         session['user_id'] = user[0]
