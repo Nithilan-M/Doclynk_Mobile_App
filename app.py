@@ -43,6 +43,19 @@ limiter = create_limiter(app)
 oauth = create_oauth(app)
 
 
+# Helper function to get client IP (handles proxied requests like Render)
+def get_client_ip():
+    """Get the real client IP address, handling proxied requests."""
+    # Check for forwarded IP (when behind a proxy like Render, Cloudflare, etc.)
+    if request.headers.get('X-Forwarded-For'):
+        # X-Forwarded-For can contain multiple IPs; the first one is the client
+        return request.headers.get('X-Forwarded-For').split(',')[0].strip()
+    elif request.headers.get('X-Real-IP'):
+        return request.headers.get('X-Real-IP')
+    else:
+        return request.remote_addr
+
+
 # Security headers middleware
 @app.after_request
 def apply_security_headers(response):
@@ -536,6 +549,20 @@ def login():
             reset_failed_login(conn, email)
         except Exception:
             pass  # Failed login tracking columns not available
+        
+        # Track login IP and timestamp
+        try:
+            client_ip = get_client_ip()
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE users SET last_login_ip = %s, last_login_at = %s WHERE id = %s",
+                (client_ip, datetime.now(), user_id)
+            )
+            conn.commit()
+            cursor.close()
+        except Exception:
+            pass  # IP tracking columns not available yet
+        
         conn.close()
 
         session['user_id'] = user_id
