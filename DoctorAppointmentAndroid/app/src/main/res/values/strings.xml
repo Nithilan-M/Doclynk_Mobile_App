@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DocLynk</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="name">Name</string>
+    <string name="login">Login</string>
+    <string name="register">Register</string>
+    <string name="verify_email">Verify Email</string>
+    <string name="otp_code">OTP Code</string>
+    <string name="verify_and_continue">Verify and Continue</string>
+    <string name="resend_otp">Resend OTP</string>
+    <string name="book_appointment">Book Appointment</string>
+    <string name="reason">Reason</string>
+    <string name="select_date">Select Date</string>
+</resources>

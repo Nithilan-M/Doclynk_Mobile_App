@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="md_theme_light_primary">#0A7C86</color>
+    <color name="md_theme_light_onPrimary">#FFFFFF</color>
+    <color name="md_theme_light_secondary">#5D6670</color>
+    <color name="md_theme_light_surface">#FAFDFC</color>
+    <color name="md_theme_light_onSurface">#1A1C1E</color>
+    <color name="md_theme_light_error">#BA1A1A</color>
+    <color name="brand_primary">#0D7FA3</color>
+    <color name="brand_primary_dark">#075A75</color>
+    <color name="brand_on_primary">#FFFFFF</color>
+    <color name="brand_text_primary">#102A43</color>
+    <color name="brand_text_secondary">#486581</color>
+</resources>

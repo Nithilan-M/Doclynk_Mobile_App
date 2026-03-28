@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/loginActivity">
+
+    <activity
+        android:id="@+id/loginActivity"
+        android:name="com.doclynk.appointment.ui.auth.LoginActivity"
+        android:label="Login">
+        <action
+            android:id="@+id/action_login_to_register"
+            app:destination="@id/registerActivity" />
+        <action
+            android:id="@+id/action_login_to_patient"
+            app:destination="@id/patientDashboardActivity" />
+        <action
+            android:id="@+id/action_login_to_doctor"
+            app:destination="@id/doctorDashboardActivity" />
+    </activity>
+
+    <activity
+        android:id="@+id/registerActivity"
+        android:name="com.doclynk.appointment.ui.auth.RegisterActivity"
+        android:label="Register" />
+
+    <activity
+        android:id="@+id/patientDashboardActivity"
+        android:name="com.doclynk.appointment.ui.patient.PatientDashboardActivity"
+        android:label="Patient Dashboard">
+        <action
+            android:id="@+id/action_patient_to_booking"
+            app:destination="@id/bookAppointmentActivity" />
+    </activity>
+
+    <activity
+        android:id="@+id/bookAppointmentActivity"
+        android:name="com.doclynk.appointment.ui.patient.BookAppointmentActivity"
+        android:label="Book Appointment" />
+
+    <activity
+        android:id="@+id/doctorDashboardActivity"
+        android:name="com.doclynk.appointment.ui.doctor.DoctorDashboardActivity"
+        android:label="Doctor Dashboard" />
+
+    <activity
+        android:id="@+id/adminDashboardActivity"
+        android:name="com.doclynk.appointment.ui.admin.AdminDashboardActivity"
+        android:label="Admin Dashboard" />
+</navigation>
