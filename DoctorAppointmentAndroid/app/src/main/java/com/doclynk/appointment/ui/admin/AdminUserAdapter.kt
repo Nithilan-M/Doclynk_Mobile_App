@@ -31,14 +31,13 @@ class AdminUserAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: AdminUser) {
-            binding.tvName.text = item.name
-            binding.tvEmail.text = item.email
-            binding.tvRole.text = "Role: ${item.role}"
-            binding.tvAdminStatus.text = if (item.is_admin) "Admin: Yes" else "Admin: No"
+            binding.tvUserName.text = item.name
+            binding.tvUserEmail.text = item.email
+            binding.tvRole.text = if (item.is_admin) "System Admin" else item.role.replaceFirstChar { it.uppercase() }
 
-            binding.btnToggleAdmin.text = if (item.is_admin) "Revoke Admin" else "Make Admin"
+            binding.btnToggleAdmin.text = if (item.is_admin) "Revoke Admin" else "Grant Admin"
             binding.btnToggleAdmin.setOnClickListener { onToggleAdmin(item) }
-            binding.btnDeleteUser.setOnClickListener { onDelete(item) }
+            binding.btnDelete.setOnClickListener { onDelete(item) }
         }
     }
 

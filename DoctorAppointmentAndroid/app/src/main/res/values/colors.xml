@@ -1,14 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="md_theme_light_primary">#0A7C86</color>
-    <color name="md_theme_light_onPrimary">#FFFFFF</color>
-    <color name="md_theme_light_secondary">#5D6670</color>
-    <color name="md_theme_light_surface">#FAFDFC</color>
-    <color name="md_theme_light_onSurface">#1A1C1E</color>
-    <color name="md_theme_light_error">#BA1A1A</color>
-    <color name="brand_primary">#0D7FA3</color>
-    <color name="brand_primary_dark">#075A75</color>
+    <!-- Brand Primary Colors (Deep Blue) -->
+    <color name="brand_primary">#00C9FF</color>
+    <color name="brand_primary_variant">#92FE9D</color>
     <color name="brand_on_primary">#FFFFFF</color>
-    <color name="brand_text_primary">#102A43</color>
-    <color name="brand_text_secondary">#486581</color>
+
+    <!-- Brand Secondary Colors (Emerald Green) -->
+    <color name="brand_secondary">#10B981</color>
+    <color name="brand_secondary_variant">#059669</color>
+    <color name="brand_on_secondary">#FFFFFF</color>
+
+    <!-- Brand Accent Colors (Indigo) -->
+    <color name="brand_accent">#6366F1</color>
+    <color name="brand_on_accent">#FFFFFF</color>
+
+    <!-- UI Backgrounds and Surfaces -->
+    <color name="brand_surface">#1A2332</color>
+    <color name="brand_background">#0F2027</color>
+    <color name="brand_on_surface">#FFFFFF</color>
+
+    <!-- Text Colors -->
+    <color name="brand_text_primary">#FFFFFF</color>
+    <color name="brand_text_secondary">#E5E7EB</color>
+
+    <!-- Status / Error -->
+    <color name="brand_error">#EF4444</color>
+    <color name="brand_success">#22C55E</color>
+    <color name="brand_warning">#F59E0B</color>
+
+    <!-- Glassmorphism specifics -->
+    <color name="glass_fill">#1AFFFFFF</color>
+    <color name="glass_stroke">#33FFFFFF</color>
+    <color name="glass_card_bg">#1AFFFFFF</color>
+
+    <!-- Gradient Reference Colors -->
+    <color name="gradient_start">#0F2027</color>
+    <color name="gradient_center">#203A43</color>
+    <color name="gradient_end">#2C5364</color>
+
+    <!-- Bottom Nav -->
+    <color name="bottom_nav_bg">#0F2027</color>
 </resources>

@@ -21,13 +21,13 @@ import kotlinx.coroutines.launch
 class DoctorDashboardActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityDoctorDashboardBinding
-    private lateinit var appointmentAdapter: DoctorAppointmentAdapter
-    private lateinit var token: String
-
     private val appContainer by lazy { AppContainer(applicationContext) }
 
     private val viewModel: DoctorDashboardViewModel by viewModels {
-        AppViewModelFactory(doctorRepository = appContainer.doctorRepository)
+        AppViewModelFactory(
+            doctorRepository = appContainer.doctorRepository,
+            sessionManager = appContainer.sessionManager
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,41 +35,39 @@ class DoctorDashboardActivity : AppCompatActivity() {
         binding = ActivityDoctorDashboardBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Set Name
+        lifecycleScope.launch {
+            val session = appContainer.sessionManager.sessionFlow.first()
+            binding.tvDoctorName.text = "Dr. ${session.userName.ifBlank { "Specialist" }}"
+        }
+
         setupRecyclerView()
+        setupClickListeners()
         observeUiState()
-        setupButtons()
-        loadSessionAndAppointments()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.fetchAppointments()
     }
 
     private fun setupRecyclerView() {
-        appointmentAdapter = DoctorAppointmentAdapter(
-            onApprove = { appointment -> viewModel.updateStatus(token, appointment.id, "approved") },
-            onReject = { appointment -> viewModel.updateStatus(token, appointment.id, "rejected") },
-            onDelete = { appointment -> viewModel.deleteAppointment(token, appointment.id) }
+        binding.recyclerAppointments.layoutManager = LinearLayoutManager(this)
+        binding.recyclerAppointments.adapter = DoctorAppointmentAdapter(
+            onApprove = { appointment -> viewModel.updateStatus(appointment.id, "approved") },
+            onReject = { appointment -> viewModel.updateStatus(appointment.id, "rejected") },
+            onDelete = { appointment -> viewModel.deleteAppointment(appointment.id) }
         )
-        binding.recyclerAppointments.apply {
-            layoutManager = LinearLayoutManager(this@DoctorDashboardActivity)
-            adapter = appointmentAdapter
-        }
     }
 
-    private fun setupButtons() {
+    private fun setupClickListeners() {
         binding.btnLogout.setOnClickListener {
-            lifecycleScope.launch {
-                appContainer.sessionManager.clearSession()
-                startActivity(Intent(this@DoctorDashboardActivity, LoginActivity::class.java))
-                finish()
-            }
-        }
-    }
-
-    private fun loadSessionAndAppointments() {
-        lifecycleScope.launch {
-            val session = appContainer.sessionManager.sessionFlow.first()
-            token = session.token
-            val displayName = if (session.userName.isNotBlank()) "Dr. ${session.userName}" else "Doctor"
-            binding.tvDoctorName.text = displayName
-            viewModel.loadAppointments(token)
+            viewModel.logout()
+            startActivity(Intent(this, LoginActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            })
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            finish()
         }
     }
 
@@ -77,19 +75,32 @@ class DoctorDashboardActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
-                    binding.progressBar.visibility = if (state.loading) View.VISIBLE else View.GONE
-                    binding.emptyView.visibility = if (!state.loading && state.appointments.isEmpty()) View.VISIBLE else View.GONE
-                    appointmentAdapter.submitList(state.appointments)
-                    binding.recyclerAppointments.scheduleLayoutAnimation()
+                    binding.progressBar.visibility = if (state.isLoading) View.VISIBLE else View.GONE
+                    binding.emptyView.visibility =
+                        if (!state.isLoading && state.appointments.isEmpty()) View.VISIBLE else View.GONE
+                    binding.recyclerAppointments.visibility =
+                        if (state.appointments.isNotEmpty()) View.VISIBLE else View.GONE
+
+                    (binding.recyclerAppointments.adapter as? DoctorAppointmentAdapter)?.submitList(state.appointments)
+
+                    val safeAppointments = state.appointments
+                    binding.tvTotalCount.text = safeAppointments.size.toString()
+                    binding.tvApprovedCount.text = safeAppointments.count { it.status.equals("approved", ignoreCase = true) }.toString()
+                    binding.tvPendingCount.text = safeAppointments.count { it.status.equals("pending", ignoreCase = true) }.toString()
 
                     state.errorMessage?.let {
-                        Snackbar.make(binding.root, it, Snackbar.LENGTH_LONG).show()
-                        viewModel.clearMessages()
+                        Snackbar.make(binding.root, it, Snackbar.LENGTH_LONG)
+                            .setBackgroundTint(resources.getColor(android.R.color.holo_red_dark, theme))
+                            .show()
+                        viewModel.clearMessage()
                     }
 
-                    state.infoMessage?.let {
-                        Snackbar.make(binding.root, it, Snackbar.LENGTH_SHORT).show()
-                        viewModel.clearMessages()
+                    state.successMessage?.let {
+                        Snackbar.make(binding.root, it, Snackbar.LENGTH_SHORT)
+                            .setBackgroundTint(resources.getColor(android.R.color.holo_green_dark, theme))
+                            .show()
+                        viewModel.clearMessage()
+                        viewModel.fetchAppointments()
                     }
                 }
             }

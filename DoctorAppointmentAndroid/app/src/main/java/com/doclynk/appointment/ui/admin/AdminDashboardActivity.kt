@@ -8,7 +8,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.doclynk.appointment.databinding.ActivityAdminDashboardBinding
 import com.doclynk.appointment.di.AppContainer
 import com.doclynk.appointment.ui.auth.LoginActivity
@@ -21,13 +20,13 @@ import kotlinx.coroutines.launch
 class AdminDashboardActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityAdminDashboardBinding
-    private lateinit var token: String
-    private lateinit var userAdapter: AdminUserAdapter
-    private lateinit var appointmentAdapter: AdminAppointmentAdapter
     private val appContainer by lazy { AppContainer(applicationContext) }
 
     private val viewModel: AdminDashboardViewModel by viewModels {
-        AppViewModelFactory(adminRepository = appContainer.adminRepository)
+        AppViewModelFactory(
+            adminRepository = appContainer.adminRepository,
+            sessionManager = appContainer.sessionManager
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,59 +34,49 @@ class AdminDashboardActivity : AppCompatActivity() {
         binding = ActivityAdminDashboardBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setupLists()
-        setupButtons()
+        val slideFadeIn = android.view.animation.AnimationUtils.loadAnimation(this, com.doclynk.appointment.R.anim.slide_fade_in)
+        binding.root.startAnimation(slideFadeIn)
+
+        setupClickListeners()
         observeUiState()
         loadSessionAndData()
     }
 
-    private fun setupLists() {
-        userAdapter = AdminUserAdapter(
-            onToggleAdmin = { user -> viewModel.toggleAdmin(token, user.id) },
-            onDelete = { user -> viewModel.deleteUser(token, user.id) }
-        )
-        appointmentAdapter = AdminAppointmentAdapter(
-            onApprove = { appointment -> viewModel.updateAppointmentStatus(token, appointment.id, "Approved") },
-            onReject = { appointment -> viewModel.updateAppointmentStatus(token, appointment.id, "Rejected") },
-            onDelete = { appointment -> viewModel.deleteAppointment(token, appointment.id) }
-        )
-
-        binding.recyclerUsers.apply {
-            layoutManager = LinearLayoutManager(this@AdminDashboardActivity)
-            adapter = userAdapter
-        }
-
-        binding.recyclerAppointments.apply {
-            layoutManager = LinearLayoutManager(this@AdminDashboardActivity)
-            adapter = appointmentAdapter
-        }
-    }
-
-    private fun setupButtons() {
+    private fun setupClickListeners() {
         binding.btnRefresh.setOnClickListener {
-            viewModel.loadAll(token)
+            viewModel.loadAll()
         }
 
         binding.btnSeedDoctorAppointments.setOnClickListener {
-            viewModel.seedDoctorAppointments(token)
+            viewModel.seedDoctorAppointments()
+        }
+
+        binding.cardManageUsers.setOnClickListener {
+            startActivity(Intent(this, AdminManageUsersActivity::class.java))
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        }
+
+        binding.cardManageAppointments.setOnClickListener {
+            startActivity(Intent(this, AdminManageAppointmentsActivity::class.java))
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         }
 
         binding.btnLogout.setOnClickListener {
-            lifecycleScope.launch {
-                appContainer.sessionManager.clearSession()
-                startActivity(Intent(this@AdminDashboardActivity, LoginActivity::class.java))
-                finish()
-            }
+            viewModel.logout()
+            startActivity(Intent(this@AdminDashboardActivity, LoginActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            })
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+            finish()
         }
     }
 
     private fun loadSessionAndData() {
         lifecycleScope.launch {
             val session = appContainer.sessionManager.sessionFlow.first()
-            token = session.token
-            val adminName = if (session.userName.isBlank()) "Admin" else "Admin ${session.userName}"
+            val adminName = if (session.userName.isBlank()) "Admin" else "${session.userName}"
             viewModel.setAdminName(adminName)
-            viewModel.loadAll(token)
+            viewModel.loadAll()
         }
     }
 
@@ -95,25 +84,25 @@ class AdminDashboardActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
-                    binding.progressBar.visibility = if (state.loading) View.VISIBLE else View.GONE
+                    binding.progressBar.visibility = if (state.isLoading) View.VISIBLE else View.GONE
                     binding.tvAdminName.text = state.adminName
                     binding.tvStats.text =
-                        "Users: ${state.stats.total_users} (Doctors ${state.stats.total_doctors}, Patients ${state.stats.total_patients}, Admins ${state.stats.total_admins})\n" +
-                        "Appointments: ${state.stats.total_appointments} | Pending ${state.stats.pending_appointments} | Approved ${state.stats.approved_appointments} | Rejected ${state.stats.rejected_appointments}"
-
-                    userAdapter.submitList(state.users)
-                    appointmentAdapter.submitList(state.appointments)
-                    binding.recyclerUsers.scheduleLayoutAnimation()
-                    binding.recyclerAppointments.scheduleLayoutAnimation()
+                        "Users: ${state.stats.total_users} (Docs ${state.stats.total_doctors}, Pats ${state.stats.total_patients}, Adms ${state.stats.total_admins})\n" +
+                        "Appointments: ${state.stats.total_appointments} | Pend ${state.stats.pending_appointments} | Appr ${state.stats.approved_appointments} | Rej ${state.stats.rejected_appointments}"
 
                     state.errorMessage?.let {
-                        Snackbar.make(binding.root, it, Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(binding.root, it, Snackbar.LENGTH_LONG)
+                            .setBackgroundTint(resources.getColor(android.R.color.holo_red_dark, theme))
+                            .show()
                         viewModel.clearMessages()
                     }
 
-                    state.infoMessage?.let {
-                        Snackbar.make(binding.root, it, Snackbar.LENGTH_SHORT).show()
+                    state.successMessage?.let {
+                        Snackbar.make(binding.root, it, Snackbar.LENGTH_SHORT)
+                            .setBackgroundTint(resources.getColor(android.R.color.holo_green_dark, theme))
+                            .show()
                         viewModel.clearMessages()
+                        viewModel.loadAll() 
                     }
                 }
             }

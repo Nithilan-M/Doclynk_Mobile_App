@@ -27,19 +27,31 @@ class AppViewModelFactory(
             }
 
             modelClass.isAssignableFrom(PatientDashboardViewModel::class.java) -> {
-                PatientDashboardViewModel(requireNotNull(patientRepository)) as T
+                PatientDashboardViewModel(
+                    patientRepository = requireNotNull(patientRepository),
+                    sessionManager = requireNotNull(sessionManager)
+                ) as T
             }
 
             modelClass.isAssignableFrom(BookingViewModel::class.java) -> {
-                BookingViewModel(requireNotNull(patientRepository)) as T
+                BookingViewModel(
+                    patientRepository = requireNotNull(patientRepository),
+                    sessionManager = requireNotNull(sessionManager)
+                ) as T
             }
 
             modelClass.isAssignableFrom(DoctorDashboardViewModel::class.java) -> {
-                DoctorDashboardViewModel(requireNotNull(doctorRepository)) as T
+                DoctorDashboardViewModel(
+                    doctorRepository = requireNotNull(doctorRepository),
+                    sessionManager = requireNotNull(sessionManager)
+                ) as T
             }
 
             modelClass.isAssignableFrom(AdminDashboardViewModel::class.java) -> {
-                AdminDashboardViewModel(requireNotNull(adminRepository)) as T
+                AdminDashboardViewModel(
+                    adminRepository = requireNotNull(adminRepository),
+                    sessionManager = requireNotNull(sessionManager)
+                ) as T
             }
 
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

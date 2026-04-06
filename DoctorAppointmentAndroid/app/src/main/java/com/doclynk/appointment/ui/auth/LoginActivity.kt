@@ -3,7 +3,6 @@ package com.doclynk.appointment.ui.auth
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
-import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
@@ -16,6 +15,7 @@ import com.doclynk.appointment.ui.doctor.DoctorDashboardActivity
 import com.doclynk.appointment.ui.patient.PatientDashboardActivity
 import com.doclynk.appointment.viewmodel.AppViewModelFactory
 import com.doclynk.appointment.viewmodel.AuthViewModel
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -37,6 +37,9 @@ class LoginActivity : AppCompatActivity() {
         binding = ActivityLoginBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        val slideFadeIn = android.view.animation.AnimationUtils.loadAnimation(this, com.doclynk.appointment.R.anim.slide_fade_in)
+        binding.root.startAnimation(slideFadeIn)
+
         checkExistingSession()
         setupClickListeners()
         observeUiState()
@@ -53,12 +56,24 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun setupClickListeners() {
+        binding.btnLogin.setOnTouchListener { view, event ->
+            when (event.action) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    view.startAnimation(android.view.animation.AnimationUtils.loadAnimation(this, com.doclynk.appointment.R.anim.btn_press))
+                }
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                    view.startAnimation(android.view.animation.AnimationUtils.loadAnimation(this, com.doclynk.appointment.R.anim.btn_release))
+                }
+            }
+            false
+        }
+
         binding.btnLogin.setOnClickListener {
             val email = binding.etEmail.text.toString().trim()
             val password = binding.etPassword.text.toString().trim()
 
             if (email.isBlank() || password.isBlank()) {
-                Toast.makeText(this, "Please enter email and password", Toast.LENGTH_SHORT).show()
+                Snackbar.make(binding.root, "Please enter email and password", Snackbar.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -70,10 +85,12 @@ class LoginActivity : AppCompatActivity() {
 
         binding.btnGoRegister.setOnClickListener {
             startActivity(Intent(this, RegisterActivity::class.java))
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         }
 
         binding.btnForgotPassword.setOnClickListener {
             startActivity(Intent(this, ForgotPasswordActivity::class.java))
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
         }
     }
 
@@ -85,12 +102,16 @@ class LoginActivity : AppCompatActivity() {
                     binding.btnLogin.isEnabled = !state.isLoading
 
                     state.errorMessage?.let {
-                        Toast.makeText(this@LoginActivity, it, Toast.LENGTH_LONG).show()
+                        Snackbar.make(binding.root, it, Snackbar.LENGTH_LONG)
+                            .setBackgroundTint(resources.getColor(android.R.color.holo_red_dark, theme))
+                            .show()
                         viewModel.clearMessage()
                     }
 
                     state.successMessage?.let {
-                        Toast.makeText(this@LoginActivity, it, Toast.LENGTH_SHORT).show()
+                        Snackbar.make(binding.root, it, Snackbar.LENGTH_SHORT)
+                            .setBackgroundTint(resources.getColor(android.R.color.holo_green_dark, theme))
+                            .show()
                         viewModel.clearMessage()
                     }
                 }
@@ -105,5 +126,6 @@ class LoginActivity : AppCompatActivity() {
             else -> Intent(this, PatientDashboardActivity::class.java)
         }
         startActivity(intent)
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
     }
 }

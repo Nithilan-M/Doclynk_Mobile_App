@@ -1,39 +1,41 @@
 package com.doclynk.appointment.ui.patient
 
-import android.app.DatePickerDialog
 import android.os.Bundle
-import android.widget.AdapterView
 import android.view.View
 import android.widget.ArrayAdapter
-import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import com.doclynk.appointment.R
 import com.doclynk.appointment.databinding.ActivityBookingBinding
 import com.doclynk.appointment.di.AppContainer
 import com.doclynk.appointment.viewmodel.AppViewModelFactory
 import com.doclynk.appointment.viewmodel.BookingViewModel
-import kotlinx.coroutines.flow.first
+import com.google.android.material.chip.Chip
+import com.google.android.material.datepicker.MaterialDatePicker
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 
 class BookAppointmentActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityBookingBinding
-    private lateinit var token: String
     private var selectedDate: String = ""
     private var selectedDoctorId: Int? = null
-    private var cachedDoctorIds: List<Int> = emptyList()
-    private var cachedSlots: List<String> = emptyList()
+    private var selectedSlot: String = ""
 
     private val appContainer by lazy { AppContainer(applicationContext) }
 
     private val viewModel: BookingViewModel by viewModels {
-        AppViewModelFactory(patientRepository = appContainer.patientRepository)
+        AppViewModelFactory(
+            patientRepository = appContainer.patientRepository,
+            sessionManager = appContainer.sessionManager
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,18 +45,17 @@ class BookAppointmentActivity : AppCompatActivity() {
 
         setupViews()
         observeUiState()
-        loadSessionAndDoctors()
+        viewModel.loadDoctors()
     }
 
     private fun setupViews() {
-        binding.spinnerDoctors.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                selectedDoctorId = viewModel.uiState.value.doctors.getOrNull(position)?.id
-            }
+        binding.btnBack.setOnClickListener {
+            finish()
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        }
 
-            override fun onNothingSelected(parent: AdapterView<*>?) {
-                selectedDoctorId = null
-            }
+        binding.spinnerDoctors.setOnItemClickListener { _, _, position, _ ->
+            selectedDoctorId = viewModel.uiState.value.doctors.getOrNull(position)?.id
         }
 
         binding.btnPickDate.setOnClickListener {
@@ -64,95 +65,109 @@ class BookAppointmentActivity : AppCompatActivity() {
         binding.btnFetchSlots.setOnClickListener {
             val doctorId = selectedDoctorId
             if (doctorId == null || selectedDate.isBlank()) {
-                Toast.makeText(this, "Choose doctor and date", Toast.LENGTH_SHORT).show()
+                Snackbar.make(binding.root, "Choose doctor and date first", Snackbar.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            viewModel.loadAvailableSlots(token, doctorId, selectedDate)
+            viewModel.loadAvailableSlots(doctorId, selectedDate)
+        }
+
+        binding.chipGroupSlots.setOnCheckedStateChangeListener { group, checkedIds ->
+            if (checkedIds.isNotEmpty()) {
+                val chip = group.findViewById<Chip>(checkedIds.first())
+                selectedSlot = chip?.text.toString()
+            } else {
+                selectedSlot = ""
+            }
         }
 
         binding.btnConfirmBooking.setOnClickListener {
             val doctorId = selectedDoctorId
-            val slotPosition = binding.spinnerSlots.selectedItemPosition
             val reason = binding.etReason.text.toString().trim()
 
-            if (doctorId == null || slotPosition < 0 || selectedDate.isBlank() || reason.isBlank()) {
-                Toast.makeText(this, "Complete all fields", Toast.LENGTH_SHORT).show()
+            if (doctorId == null || selectedDate.isBlank() || selectedSlot.isBlank() || reason.isBlank()) {
+                Snackbar.make(binding.root, "Complete all fields to book", Snackbar.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            val slot = viewModel.uiState.value.slots[slotPosition]
-            viewModel.bookAppointment(token, doctorId, selectedDate, slot, reason)
+            viewModel.bookAppointment(doctorId, selectedDate, selectedSlot, reason)
         }
     }
 
     private fun showDatePicker() {
-        val calendar = Calendar.getInstance()
-        DatePickerDialog(
-            this,
-            { _, year, month, dayOfMonth ->
-                calendar.set(year, month, dayOfMonth)
-                selectedDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(calendar.time)
-                binding.tvSelectedDate.text = selectedDate
-            },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        ).show()
-    }
+        val datePicker = MaterialDatePicker.Builder.datePicker()
+            .setTitleText("Select Appointment Date")
+            .setSelection(MaterialDatePicker.todayInUtcMilliseconds())
+            .build()
 
-    private fun loadSessionAndDoctors() {
-        lifecycleScope.launch {
-            val session = appContainer.sessionManager.sessionFlow.first()
-            token = session.token
-            viewModel.loadDoctors(token)
+        datePicker.addOnPositiveButtonClickListener { selection ->
+            val formatter = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            selectedDate = formatter.format(Date(selection))
+            binding.tvSelectedDate.text = "Selected: $selectedDate"
+            binding.tvSelectedDate.setTextColor(ContextCompat.getColor(this, R.color.brand_primary))
         }
+
+        datePicker.show(supportFragmentManager, "MATERIAL_DATE_PICKER")
     }
 
     private fun observeUiState() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
-                    binding.progressBar.isIndeterminate = true
-                    binding.progressBar.visibility = if (state.loading) View.VISIBLE else View.GONE
+                    binding.progressBar.visibility = if (state.isLoading) View.VISIBLE else View.GONE
 
-                    val doctorIds = state.doctors.map { it.id }
-                    if (doctorIds != cachedDoctorIds) {
-                        val oldDoctorId = selectedDoctorId
-                        val doctorNames = state.doctors.map { "Dr. ${it.name} (${it.email})" }
-                        binding.spinnerDoctors.adapter = ArrayAdapter(
+                    // Update Doctors
+                    if (state.doctors.isNotEmpty() && binding.spinnerDoctors.adapter == null) {
+                        val doctorNames = state.doctors.map { "Dr. ${it.name} - ${it.specialization ?: "Specialist"}" }
+                        val adapter = ArrayAdapter(
                             this@BookAppointmentActivity,
-                            android.R.layout.simple_spinner_dropdown_item,
+                            android.R.layout.simple_dropdown_item_1line,
                             doctorNames
                         )
-                        val selectedIndex = state.doctors.indexOfFirst { it.id == oldDoctorId }
-                            .takeIf { it >= 0 } ?: 0
-                        if (state.doctors.isNotEmpty()) {
-                            binding.spinnerDoctors.setSelection(selectedIndex, false)
-                            selectedDoctorId = state.doctors[selectedIndex].id
+                        binding.spinnerDoctors.setAdapter(adapter)
+                    }
+
+                    // Update Slots
+                    if (state.slots.isNotEmpty()) {
+                        binding.llTimeSlots.visibility = View.VISIBLE
+                        binding.chipGroupSlots.removeAllViews()
+                        state.slots.forEach { slotTime ->
+                            val chip = Chip(this@BookAppointmentActivity).apply {
+                                text = slotTime
+                                isCheckable = true
+                                isClickable = true
+                                chipBackgroundColor = ContextCompat.getColorStateList(this@BookAppointmentActivity, R.color.brand_background)
+                                setTextColor(ContextCompat.getColor(this@BookAppointmentActivity, R.color.brand_text_primary))
+                            }
+                            binding.chipGroupSlots.addView(chip)
                         }
-                        cachedDoctorIds = doctorIds
+                    } else {
+                        // Clear if empty check is returned successful but no slots
+                        binding.chipGroupSlots.removeAllViews()
                     }
 
-                    if (state.slots != cachedSlots) {
-                        binding.spinnerSlots.adapter = ArrayAdapter(
-                            this@BookAppointmentActivity,
-                            android.R.layout.simple_spinner_dropdown_item,
-                            state.slots
-                        )
-                        cachedSlots = state.slots
-                    }
-
+                    // Handle Messages
                     state.errorMessage?.let {
-                        Toast.makeText(this@BookAppointmentActivity, it, Toast.LENGTH_LONG).show()
+                        Snackbar.make(binding.root, it, Snackbar.LENGTH_LONG)
+                            .setBackgroundTint(resources.getColor(android.R.color.holo_red_dark, theme))
+                            .show()
                         viewModel.clearMessages()
                     }
 
                     state.successMessage?.let {
-                        Toast.makeText(this@BookAppointmentActivity, it, Toast.LENGTH_SHORT).show()
+                        Snackbar.make(binding.root, it, Snackbar.LENGTH_SHORT)
+                            .setBackgroundTint(resources.getColor(android.R.color.holo_green_dark, theme))
+                            .show()
+                        viewModel.clearMessages()
                         finish()
+                        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
                     }
                 }
             }
         }
+    }
+
+    override fun onBackPressed() {
+        super.onBackPressed()
+        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
     }
 }

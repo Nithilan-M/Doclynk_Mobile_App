@@ -5,13 +5,15 @@ import androidx.lifecycle.viewModelScope
 import com.doclynk.appointment.data.model.ApiResult
 import com.doclynk.appointment.data.model.Doctor
 import com.doclynk.appointment.data.repository.PatientRepository
+import com.doclynk.appointment.data.repository.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class BookingUiState(
-    val loading: Boolean = false,
+    val isLoading: Boolean = false,
     val doctors: List<Doctor> = emptyList(),
     val slots: List<String> = emptyList(),
     val errorMessage: String? = null,
@@ -19,64 +21,65 @@ data class BookingUiState(
 )
 
 class BookingViewModel(
-    private val patientRepository: PatientRepository
+    private val patientRepository: PatientRepository,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(BookingUiState())
     val uiState: StateFlow<BookingUiState> = _uiState.asStateFlow()
 
-    fun loadDoctors(token: String) {
+    fun loadDoctors() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(loading = true)
+            val token = sessionManager.sessionFlow.first().token
+            _uiState.value = _uiState.value.copy(isLoading = true)
             when (val result = patientRepository.getDoctors(token)) {
                 is ApiResult.Success -> {
                     _uiState.value = _uiState.value.copy(
-                        loading = false,
+                        isLoading = false,
                         doctors = result.data,
                         errorMessage = null
                     )
                 }
-
                 is ApiResult.Error -> {
-                    _uiState.value = _uiState.value.copy(loading = false, errorMessage = result.message)
+                    _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = result.message)
                 }
             }
         }
     }
 
-    fun loadAvailableSlots(token: String, doctorId: Int, date: String) {
+    fun loadAvailableSlots(doctorId: Int, date: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(loading = true, slots = emptyList())
+            val token = sessionManager.sessionFlow.first().token
+            _uiState.value = _uiState.value.copy(isLoading = true, slots = emptyList())
             when (val result = patientRepository.getAvailableSlots(token, doctorId, date)) {
                 is ApiResult.Success -> {
                     _uiState.value = _uiState.value.copy(
-                        loading = false,
+                        isLoading = false,
                         slots = result.data,
                         errorMessage = null
                     )
                 }
-
                 is ApiResult.Error -> {
-                    _uiState.value = _uiState.value.copy(loading = false, errorMessage = result.message)
+                    _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = result.message)
                 }
             }
         }
     }
 
-    fun bookAppointment(token: String, doctorId: Int, date: String, timeSlot: String, reason: String) {
+    fun bookAppointment(doctorId: Int, date: String, timeSlot: String, reason: String) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(loading = true)
+            val token = sessionManager.sessionFlow.first().token
+            _uiState.value = _uiState.value.copy(isLoading = true)
             when (val result = patientRepository.bookAppointment(token, doctorId, date, timeSlot, reason)) {
                 is ApiResult.Success -> {
                     _uiState.value = _uiState.value.copy(
-                        loading = false,
+                        isLoading = false,
                         successMessage = result.data.message,
                         errorMessage = null
                     )
                 }
-
                 is ApiResult.Error -> {
-                    _uiState.value = _uiState.value.copy(loading = false, errorMessage = result.message)
+                    _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = result.message)
                 }
             }
         }

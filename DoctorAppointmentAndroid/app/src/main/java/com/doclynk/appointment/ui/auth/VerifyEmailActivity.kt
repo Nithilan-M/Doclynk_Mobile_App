@@ -55,15 +55,27 @@ class VerifyEmailActivity : AppCompatActivity() {
         }
 
         binding.tvEmailValue.text = email
+        
+        val slideFadeIn = android.view.animation.AnimationUtils.loadAnimation(this, com.doclynk.appointment.R.anim.slide_fade_in)
+        binding.root.startAnimation(slideFadeIn)
+
         setupClickListeners()
         observeUiState()
     }
 
     private fun setupClickListeners() {
+        binding.btnVerifyOtp.setOnTouchListener { view, event ->
+            when (event.action) {
+                android.view.MotionEvent.ACTION_DOWN -> view.startAnimation(android.view.animation.AnimationUtils.loadAnimation(this, com.doclynk.appointment.R.anim.btn_press))
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> view.startAnimation(android.view.animation.AnimationUtils.loadAnimation(this, com.doclynk.appointment.R.anim.btn_release))
+            }
+            false
+        }
+
         binding.btnVerifyOtp.setOnClickListener {
             val otp = binding.etOtp.text.toString().trim()
             if (otp.length < 4) {
-                Toast.makeText(this, "Enter the OTP sent to your email", Toast.LENGTH_SHORT).show()
+                com.google.android.material.snackbar.Snackbar.make(binding.root, "Enter the OTP sent to your email", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -92,12 +104,16 @@ class VerifyEmailActivity : AppCompatActivity() {
                     binding.btnResendOtp.isEnabled = !state.isLoading
 
                     state.errorMessage?.let {
-                        Toast.makeText(this@VerifyEmailActivity, it, Toast.LENGTH_LONG).show()
+                        com.google.android.material.snackbar.Snackbar.make(binding.root, it, com.google.android.material.snackbar.Snackbar.LENGTH_LONG)
+                            .setBackgroundTint(resources.getColor(android.R.color.holo_red_dark, theme))
+                            .show()
                         viewModel.clearMessage()
                     }
 
                     state.successMessage?.let {
-                        Toast.makeText(this@VerifyEmailActivity, it, Toast.LENGTH_SHORT).show()
+                        com.google.android.material.snackbar.Snackbar.make(binding.root, it, com.google.android.material.snackbar.Snackbar.LENGTH_SHORT)
+                            .setBackgroundTint(resources.getColor(android.R.color.holo_green_dark, theme))
+                            .show()
                         viewModel.clearMessage()
                     }
                 }

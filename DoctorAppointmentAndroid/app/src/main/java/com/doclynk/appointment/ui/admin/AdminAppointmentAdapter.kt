@@ -32,8 +32,10 @@ class AdminAppointmentAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: AdminAppointment) {
-            binding.tvTitle.text = "#${item.id} ${item.patient_name} -> Dr. ${item.doctor_name}"
-            binding.tvMeta.text = "${item.date} | ${item.time_slot} | ${item.status}"
+            binding.tvAppointmentHeader.text = "Appointment #${item.id}"
+            binding.tvPatientAndDoctor.text = "Patient: ${item.patient_name} | Dr. ${item.doctor_name}"
+            binding.tvDateTime.text = "${item.date} | ${item.time_slot}"
+            binding.tvStatus.text = item.status
             binding.tvReason.text = "Reason: ${item.reason}"
 
             binding.btnApprove.setOnClickListener { onApprove(item) }

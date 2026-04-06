@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <style name="Theme.DocLynk" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Primary Brand Colors -->
+        <item name="colorPrimary">@color/brand_primary</item>
+        <item name="colorOnPrimary">@color/brand_on_primary</item>
+        <item name="colorPrimaryContainer">@color/brand_primary_variant</item>
+        <item name="colorOnPrimaryContainer">@color/brand_on_primary</item>
+
+        <!-- Secondary Brand Colors -->
+        <item name="colorSecondary">@color/brand_secondary</item>
+        <item name="colorOnSecondary">@color/brand_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/brand_secondary_variant</item>
+        <item name="colorOnSecondaryContainer">@color/brand_on_secondary</item>
+
+        <!-- Accent Colors -->
+        <item name="colorTertiary">@color/brand_accent</item>
+        <item name="colorOnTertiary">@color/brand_on_accent</item>
+
+        <!-- Background & Surface -->
+        <item name="android:colorBackground">@color/brand_background</item>
+        <item name="colorSurface">@color/brand_surface</item>
+        <item name="colorOnSurface">@color/brand_on_surface</item>
+
+        <!-- Status Bar -->
+        <item name="android:statusBarColor" tools:targetApi="l">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@color/bottom_nav_bg</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        
+        <!-- Component Styles -->
+        <item name="materialButtonStyle">@style/Widget.DocLynk.Button</item>
+        <item name="textInputStyle">@style/Widget.DocLynk.TextInputLayout</item>
+        <item name="materialCardViewStyle">@style/Widget.DocLynk.CardView</item>
+    </style>
+</resources>

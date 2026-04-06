@@ -1,34 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.DocLynk" parent="Theme.Material3.Light.NoActionBar">
+    <style name="Theme.DocLynk" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Primary Brand Colors -->
         <item name="colorPrimary">@color/brand_primary</item>
         <item name="colorOnPrimary">@color/brand_on_primary</item>
-        <item name="colorSecondary">@color/brand_primary_dark</item>
-        <item name="colorSurface">@color/md_theme_light_surface</item>
+        <item name="colorPrimaryContainer">@color/brand_primary_variant</item>
+        <item name="colorOnPrimaryContainer">@color/brand_on_primary</item>
+
+        <!-- Secondary Brand Colors -->
+        <item name="colorSecondary">@color/brand_secondary</item>
+        <item name="colorOnSecondary">@color/brand_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/brand_secondary_variant</item>
+        <item name="colorOnSecondaryContainer">@color/brand_on_secondary</item>
+
+        <!-- Accent Colors -->
+        <item name="colorTertiary">@color/brand_accent</item>
+        <item name="colorOnTertiary">@color/brand_on_accent</item>
+
+        <!-- Background & Surface -->
+        <item name="android:colorBackground">@color/brand_background</item>
+        <item name="colorSurface">@color/brand_surface</item>
+        <item name="colorOnSurface">@color/brand_on_surface</item>
+
+        <!-- Status Bar -->
         <item name="android:statusBarColor" tools:targetApi="l">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="android:navigationBarColor">@color/bottom_nav_bg</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+
+        <!-- Component Styles -->
         <item name="materialButtonStyle">@style/Widget.DocLynk.Button</item>
         <item name="textInputStyle">@style/Widget.DocLynk.TextInputLayout</item>
+        <item name="materialCardViewStyle">@style/Widget.DocLynk.CardView</item>
     </style>
 
+    <!-- Buttons -->
     <style name="Widget.DocLynk.Button" parent="Widget.Material3.Button">
-        <item name="cornerRadius">16dp</item>
+        <item name="cornerRadius">20dp</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:minHeight">52dp</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="backgroundTint">@color/brand_primary</item>
+        <item name="android:textColor">#0F2027</item>
+    </style>
+
+    <style name="Widget.DocLynk.GradientButton" parent="Widget.DocLynk.Button">
+        <item name="android:background">@drawable/bg_gradient_button</item>
+        <item name="android:textColor">#0F2027</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:minHeight">56dp</item>
     </style>
 
     <style name="Widget.DocLynk.OutlinedButton" parent="Widget.Material3.Button.OutlinedButton">
-        <item name="cornerRadius">16dp</item>
+        <item name="cornerRadius">20dp</item>
         <item name="android:textStyle">bold</item>
-        <item name="android:minHeight">52dp</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="strokeColor">@color/brand_primary</item>
+        <item name="android:textColor">@color/brand_primary</item>
     </style>
 
+    <!-- Text Inputs -->
     <style name="Widget.DocLynk.TextInputLayout" parent="Widget.Material3.TextInputLayout.OutlinedBox">
         <item name="shapeAppearance">@style/ShapeAppearance.DocLynk.Input</item>
+        <item name="boxStrokeColor">@color/brand_primary</item>
+        <item name="hintTextColor">@color/brand_primary</item>
+        <item name="android:textColorHint">@color/brand_text_secondary</item>
     </style>
 
     <style name="ShapeAppearance.DocLynk.Input" parent="ShapeAppearance.Material3.MediumComponent">
         <item name="cornerFamily">rounded</item>
         <item name="cornerSize">16dp</item>
+    </style>
+
+    <!-- Cards -->
+    <style name="Widget.DocLynk.CardView" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardElevation">4dp</item>
+        <item name="cardCornerRadius">20dp</item>
+        <item name="strokeWidth">0dp</item>
     </style>
 </resources>

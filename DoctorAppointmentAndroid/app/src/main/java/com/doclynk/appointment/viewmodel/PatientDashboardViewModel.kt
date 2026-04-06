@@ -5,39 +5,42 @@ import androidx.lifecycle.viewModelScope
 import com.doclynk.appointment.data.model.ApiResult
 import com.doclynk.appointment.data.model.Appointment
 import com.doclynk.appointment.data.repository.PatientRepository
+import com.doclynk.appointment.data.repository.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class PatientDashboardUiState(
-    val loading: Boolean = false,
+    val isLoading: Boolean = false,
     val appointments: List<Appointment> = emptyList(),
     val errorMessage: String? = null,
-    val infoMessage: String? = null
+    val successMessage: String? = null
 )
 
 class PatientDashboardViewModel(
-    private val patientRepository: PatientRepository
+    private val patientRepository: PatientRepository,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PatientDashboardUiState())
     val uiState: StateFlow<PatientDashboardUiState> = _uiState.asStateFlow()
 
-    fun loadAppointments(token: String) {
+    fun fetchAppointments() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(loading = true, errorMessage = null)
+            val token = sessionManager.sessionFlow.first().token
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
             when (val result = patientRepository.getAppointments(token)) {
                 is ApiResult.Success -> {
                     _uiState.value = _uiState.value.copy(
-                        loading = false,
+                        isLoading = false,
                         appointments = result.data
                     )
                 }
-
                 is ApiResult.Error -> {
                     _uiState.value = _uiState.value.copy(
-                        loading = false,
+                        isLoading = false,
                         errorMessage = result.message
                     )
                 }
@@ -45,14 +48,14 @@ class PatientDashboardViewModel(
         }
     }
 
-    fun cancelAppointment(token: String, appointmentId: Int) {
+    fun cancelAppointment(appointmentId: Int) {
         viewModelScope.launch {
+            val token = sessionManager.sessionFlow.first().token
             when (val result = patientRepository.cancelAppointment(token, appointmentId)) {
                 is ApiResult.Success -> {
-                    _uiState.value = _uiState.value.copy(infoMessage = result.data.message)
-                    loadAppointments(token)
+                    _uiState.value = _uiState.value.copy(successMessage = result.data.message)
+                    fetchAppointments()
                 }
-
                 is ApiResult.Error -> {
                     _uiState.value = _uiState.value.copy(errorMessage = result.message)
                 }
@@ -60,7 +63,13 @@ class PatientDashboardViewModel(
         }
     }
 
-    fun clearMessages() {
-        _uiState.value = _uiState.value.copy(errorMessage = null, infoMessage = null)
+    fun logout() {
+        viewModelScope.launch {
+            sessionManager.clearSession()
+        }
+    }
+
+    fun clearMessage() {
+        _uiState.value = _uiState.value.copy(errorMessage = null, successMessage = null)
     }
 }

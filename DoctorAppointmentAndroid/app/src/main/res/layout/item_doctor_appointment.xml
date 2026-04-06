@@ -1,76 +1,108 @@
 <?xml version="1.0" encoding="utf-8"?>
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginVertical="6dp">
+    android:layout_marginVertical="8dp"
+    app:cardBackgroundColor="@color/glass_card_bg"
+    app:strokeColor="@color/glass_stroke"
+    app:strokeWidth="1dp">
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="12dp">
+        android:padding="16dp">
+
+        <ImageView
+            android:id="@+id/ivPatientAvatar"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_main_gradient"
+            android:padding="8dp"
+            android:src="@drawable/ic_person"
+            app:tint="@color/brand_on_primary"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
 
         <TextView
             android:id="@+id/tvPatientName"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:text="Patient Name"
+            android:textColor="@color/brand_text_primary"
             android:textSize="18sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tvDoctorName"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:textColor="@color/brand_text_secondary" />
-
-        <TextView
-            android:id="@+id/tvAppointmentId"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:textColor="@color/brand_text_secondary" />
+            android:textStyle="bold"
+            app:layout_constraintEnd_toStartOf="@id/tvStatus"
+            app:layout_constraintStart_toEndOf="@id/ivPatientAvatar"
+            app:layout_constraintTop_toTopOf="@id/ivPatientAvatar" />
 
         <TextView
             android:id="@+id/tvDateTime"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp" />
-
-        <TextView
-            android:id="@+id/tvReason"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp" />
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="2dp"
+            android:text="Date - Time"
+            android:textColor="@color/brand_text_secondary"
+            android:textSize="14sp"
+            app:layout_constraintStart_toEndOf="@id/ivPatientAvatar"
+            app:layout_constraintTop_toBottomOf="@id/tvPatientName" />
 
         <TextView
             android:id="@+id/tvStatus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textStyle="bold" />
+            android:background="@drawable/bg_glassmorphic_card"
+            android:backgroundTint="@color/glass_stroke"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"
+            android:text="Pending"
+            android:textColor="@color/brand_accent"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/tvReason"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="Reason for visit"
+            android:textColor="@color/brand_text_primary"
+            android:textSize="14sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/ivPatientAvatar" />
 
         <LinearLayout
+            android:id="@+id/llActions"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:orientation="horizontal">
+            android:layout_marginTop="16dp"
+            android:orientation="horizontal"
+            android:weightSum="2"
+            app:layout_constraintTop_toBottomOf="@id/tvReason">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnApprove"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_weight="1"
+                android:layout_marginEnd="4dp"
                 android:text="Approve" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnReject"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_height="48dp"
                 android:layout_weight="1"
-                android:text="Reject" />
+                android:layout_marginStart="4dp"
+                android:text="Reject"
+                android:textColor="@color/brand_error"
+                app:strokeColor="@color/brand_error" />
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
@@ -78,6 +110,12 @@
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Delete" />
-    </LinearLayout>
+            android:layout_marginTop="4dp"
+            android:text="Clear Record"
+            android:textColor="@color/brand_text_secondary"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/llActions" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </com.google.android.material.card.MaterialCardView>

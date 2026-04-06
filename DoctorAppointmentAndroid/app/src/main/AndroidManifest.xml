@@ -16,6 +16,12 @@
             android:name=".ui.admin.AdminDashboardActivity"
             android:exported="false" />
         <activity
+            android:name=".ui.admin.AdminManageUsersActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.admin.AdminManageAppointmentsActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.doctor.DoctorDashboardActivity"
             android:exported="false" />
         <activity

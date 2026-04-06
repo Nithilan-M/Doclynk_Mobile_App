@@ -1,0 +1,87 @@
+package com.doclynk.appointment.ui.admin
+
+import android.os.Bundle
+import android.view.View
+import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.doclynk.appointment.databinding.ActivityAdminManageAppointmentsBinding
+import com.doclynk.appointment.di.AppContainer
+import com.doclynk.appointment.viewmodel.AdminDashboardViewModel
+import com.doclynk.appointment.viewmodel.AppViewModelFactory
+import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.launch
+
+class AdminManageAppointmentsActivity : AppCompatActivity() {
+
+    private lateinit var binding: ActivityAdminManageAppointmentsBinding
+    private lateinit var appointmentAdapter: AdminAppointmentAdapter
+    private val appContainer by lazy { AppContainer(applicationContext) }
+
+    private val viewModel: AdminDashboardViewModel by viewModels {
+        AppViewModelFactory(
+            adminRepository = appContainer.adminRepository,
+            sessionManager = appContainer.sessionManager
+        )
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        binding = ActivityAdminManageAppointmentsBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        val slideFadeIn = android.view.animation.AnimationUtils.loadAnimation(this, com.doclynk.appointment.R.anim.slide_fade_in)
+        binding.root.startAnimation(slideFadeIn)
+
+        setupUI()
+        observeUiState()
+        viewModel.loadAll()
+    }
+
+    private fun setupUI() {
+        binding.btnBack.setOnClickListener {
+            finish()
+            overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+        }
+
+        appointmentAdapter = AdminAppointmentAdapter(
+            onApprove = { appointment -> viewModel.updateAppointmentStatus(appointment.id, "Approved") },
+            onReject = { appointment -> viewModel.updateAppointmentStatus(appointment.id, "Rejected") },
+            onDelete = { appointment -> viewModel.deleteAppointment(appointment.id) }
+        )
+
+        binding.recyclerAppointments.apply {
+            layoutManager = LinearLayoutManager(this@AdminManageAppointmentsActivity)
+            adapter = appointmentAdapter
+        }
+    }
+
+    private fun observeUiState() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.uiState.collect { state ->
+                    binding.progressBar.visibility = if (state.isLoading) View.VISIBLE else View.GONE
+                    appointmentAdapter.submitList(state.appointments)
+
+                    state.errorMessage?.let {
+                        Snackbar.make(binding.root, it, Snackbar.LENGTH_LONG)
+                            .setBackgroundTint(resources.getColor(android.R.color.holo_red_dark, theme))
+                            .show()
+                        viewModel.clearMessages()
+                    }
+
+                    state.successMessage?.let {
+                        Snackbar.make(binding.root, it, Snackbar.LENGTH_SHORT)
+                            .setBackgroundTint(resources.getColor(android.R.color.holo_green_dark, theme))
+                            .show()
+                        viewModel.clearMessages()
+                        viewModel.loadAll()
+                    }
+                }
+            }
+        }
+    }
+}

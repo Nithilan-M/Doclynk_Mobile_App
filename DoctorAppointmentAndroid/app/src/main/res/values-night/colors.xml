@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand Primary Colors (Deep Blue) -->
+    <color name="brand_primary">#00C9FF</color>
+    <color name="brand_primary_variant">#92FE9D</color>
+    <color name="brand_on_primary">#FFFFFF</color>
+
+    <!-- Brand Secondary Colors (Emerald Green) -->
+    <color name="brand_secondary">#10B981</color>
+    <color name="brand_secondary_variant">#34D399</color>
+    <color name="brand_on_secondary">#FFFFFF</color>
+
+    <!-- Brand Accent Colors (Indigo) -->
+    <color name="brand_accent">#818CF8</color>
+    <color name="brand_on_accent">#FFFFFF</color>
+
+    <!-- UI Backgrounds and Surfaces -->
+    <color name="brand_surface">#0D1B24</color>
+    <color name="brand_background">#091318</color>
+    <color name="brand_on_surface">#F8FAFC</color>
+
+    <!-- Text Colors -->
+    <color name="brand_text_primary">#F8FAFC</color>
+    <color name="brand_text_secondary">#CBD5E1</color>
+
+    <!-- Status / Error -->
+    <color name="brand_error">#F87171</color>
+    <color name="brand_success">#4ADE80</color>
+    <color name="brand_warning">#FCD34D</color>
+
+    <!-- Glassmorphism specifics -->
+    <color name="glass_fill">#15FFFFFF</color>
+    <color name="glass_stroke">#22FFFFFF</color>
+    <color name="glass_card_bg">#15FFFFFF</color>
+
+    <!-- Gradient Reference Colors -->
+    <color name="gradient_start">#091318</color>
+    <color name="gradient_center">#152530</color>
+    <color name="gradient_end">#1F3D4D</color>
+
+    <!-- Bottom Nav -->
+    <color name="bottom_nav_bg">#091318</color>
+</resources>

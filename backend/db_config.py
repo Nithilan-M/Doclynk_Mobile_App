@@ -13,7 +13,8 @@ def get_db_connection():
 
     conn = psycopg2.connect(
         database_url,
-        sslmode="require"
+        sslmode="require",
+        connect_timeout=10
     )
 
     return conn

@@ -32,12 +32,10 @@ class DoctorAppointmentAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: Appointment) {
-            binding.tvPatientName.text = "Patient: ${item.patientName}"
-            binding.tvDoctorName.text = "Doctor: ${item.doctorName}"
-            binding.tvAppointmentId.text = "Appointment ID: #${item.id}"
-            binding.tvDateTime.text = "Date & Time: ${item.date} | ${item.timeSlot}"
+            binding.tvPatientName.text = item.patientName
+            binding.tvDateTime.text = "${item.date} | ${item.timeSlot}"
             binding.tvReason.text = "Reason: ${item.reason}"
-            binding.tvStatus.text = "Status: ${item.status}"
+            binding.tvStatus.text = item.status
 
             binding.btnApprove.setOnClickListener { onApprove(item) }
             binding.btnReject.setOnClickListener { onReject(item) }

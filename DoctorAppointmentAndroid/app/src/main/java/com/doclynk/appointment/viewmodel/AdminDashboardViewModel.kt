@@ -7,23 +7,26 @@ import com.doclynk.appointment.data.model.AdminStats
 import com.doclynk.appointment.data.model.AdminUser
 import com.doclynk.appointment.data.model.ApiResult
 import com.doclynk.appointment.data.repository.AdminRepository
+import com.doclynk.appointment.data.repository.SessionManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class AdminDashboardUiState(
-    val loading: Boolean = false,
+    val isLoading: Boolean = false,
     val adminName: String = "Admin",
     val stats: AdminStats = AdminStats(),
     val users: List<AdminUser> = emptyList(),
     val appointments: List<AdminAppointment> = emptyList(),
     val errorMessage: String? = null,
-    val infoMessage: String? = null
+    val successMessage: String? = null
 )
 
 class AdminDashboardViewModel(
-    private val adminRepository: AdminRepository
+    private val adminRepository: AdminRepository,
+    private val sessionManager: SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AdminDashboardUiState())
@@ -33,15 +36,16 @@ class AdminDashboardViewModel(
         _uiState.value = _uiState.value.copy(adminName = name)
     }
 
-    fun loadAll(token: String) {
+    fun loadAll() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(loading = true, errorMessage = null)
+            val token = sessionManager.sessionFlow.first().token
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
             val dashboardResult = adminRepository.getDashboard(token)
             val usersResult = adminRepository.getUsers(token)
             val appointmentsResult = adminRepository.getAppointments(token)
 
-            val nextState = _uiState.value.copy(loading = false)
+            val nextState = _uiState.value.copy(isLoading = false)
 
             _uiState.value = when {
                 dashboardResult is ApiResult.Error -> nextState.copy(errorMessage = dashboardResult.message)
@@ -56,12 +60,13 @@ class AdminDashboardViewModel(
         }
     }
 
-    fun toggleAdmin(token: String, userId: Int) {
+    fun toggleAdmin(userId: Int) {
         viewModelScope.launch {
+            val token = sessionManager.sessionFlow.first().token
             when (val result = adminRepository.toggleAdmin(token, userId)) {
                 is ApiResult.Success -> {
-                    _uiState.value = _uiState.value.copy(infoMessage = result.data.message)
-                    loadAll(token)
+                    _uiState.value = _uiState.value.copy(successMessage = result.data.message)
+                    loadAll()
                 }
                 is ApiResult.Error -> {
                     _uiState.value = _uiState.value.copy(errorMessage = result.message)
@@ -70,12 +75,13 @@ class AdminDashboardViewModel(
         }
     }
 
-    fun deleteUser(token: String, userId: Int) {
+    fun deleteUser(userId: Int) {
         viewModelScope.launch {
+            val token = sessionManager.sessionFlow.first().token
             when (val result = adminRepository.deleteUser(token, userId)) {
                 is ApiResult.Success -> {
-                    _uiState.value = _uiState.value.copy(infoMessage = result.data.message)
-                    loadAll(token)
+                    _uiState.value = _uiState.value.copy(successMessage = result.data.message)
+                    loadAll()
                 }
                 is ApiResult.Error -> {
                     _uiState.value = _uiState.value.copy(errorMessage = result.message)
@@ -84,12 +90,13 @@ class AdminDashboardViewModel(
         }
     }
 
-    fun updateAppointmentStatus(token: String, appointmentId: Int, status: String) {
+    fun updateAppointmentStatus(appointmentId: Int, status: String) {
         viewModelScope.launch {
+            val token = sessionManager.sessionFlow.first().token
             when (val result = adminRepository.updateAppointmentStatus(token, appointmentId, status)) {
                 is ApiResult.Success -> {
-                    _uiState.value = _uiState.value.copy(infoMessage = result.data.message)
-                    loadAll(token)
+                    _uiState.value = _uiState.value.copy(successMessage = result.data.message)
+                    loadAll()
                 }
                 is ApiResult.Error -> {
                     _uiState.value = _uiState.value.copy(errorMessage = result.message)
@@ -98,12 +105,13 @@ class AdminDashboardViewModel(
         }
     }
 
-    fun deleteAppointment(token: String, appointmentId: Int) {
+    fun deleteAppointment(appointmentId: Int) {
         viewModelScope.launch {
+            val token = sessionManager.sessionFlow.first().token
             when (val result = adminRepository.deleteAppointment(token, appointmentId)) {
                 is ApiResult.Success -> {
-                    _uiState.value = _uiState.value.copy(infoMessage = result.data.message)
-                    loadAll(token)
+                    _uiState.value = _uiState.value.copy(successMessage = result.data.message)
+                    loadAll()
                 }
                 is ApiResult.Error -> {
                     _uiState.value = _uiState.value.copy(errorMessage = result.message)
@@ -112,21 +120,28 @@ class AdminDashboardViewModel(
         }
     }
 
-    fun seedDoctorAppointments(token: String) {
+    fun seedDoctorAppointments() {
         viewModelScope.launch {
+            val token = sessionManager.sessionFlow.first().token
             when (val result = adminRepository.seedDoctorAppointments(token)) {
                 is ApiResult.Success -> {
-                    _uiState.value = _uiState.value.copy(infoMessage = result.data.message)
-                    loadAll(token)
+                    _uiState.value = _uiState.value.copy(successMessage = result.data.message)
+                    loadAll()
                 }
                 is ApiResult.Error -> {
                     _uiState.value = _uiState.value.copy(errorMessage = result.message)
                 }
             }
+        }
+    }
+
+    fun logout() {
+        viewModelScope.launch {
+            sessionManager.clearSession()
         }
     }
 
     fun clearMessages() {
-        _uiState.value = _uiState.value.copy(errorMessage = null, infoMessage = null)
+        _uiState.value = _uiState.value.copy(errorMessage = null, successMessage = null)
     }
 }
